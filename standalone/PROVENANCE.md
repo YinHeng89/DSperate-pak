@@ -11,6 +11,7 @@ Everything here is measured from the build, not from memory.
 | Tag | `v2.1.1` |
 | Commit | `baec96501802bb04203cac07b420c67eff8054b8` |
 | Licence | GPL-3.0-or-later (`LICENSE`) |
+| Pak base | `cfb037e` (`v2.1.1`, merge of PR #6) &mdash; the released pak this branch adds the Chinese series to |
 | Patches | `patches/0001-pak-cache-and-archive-policy.patch`, `patches/0002-save-durability.patch`, `patches/0003-lid-resume-no-fabricated-close.patch`, `patches/0004-deterministic-version.patch`, `patches/0005-dsperate-ra-account-adapter.patch`, `patches/0006-chinese-localization.patch`, `patches/0007-zh-menu-and-ui-language.patch`, `patches/0008-cjk-drawing.patch`, `patches/0009-english-rows-through-tr-text.patch`, `patches/0010-rest-of-the-menu-in-the-set-language.patch`, `patches/0011-face-pips-that-follow-the-pad-own-naming.patch` and `patches/0012-achievement-status-in-the-set-language.patch` (sha256-locked; see below) |
 
 ## Patches
