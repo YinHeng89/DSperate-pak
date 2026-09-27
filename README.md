@@ -37,19 +37,18 @@ about 60 FPS in Contra 4. With DSperate removed, Leaf falls back to DraStic
 and keeps DSperate as the saved choice for when you reinstall it.
 
 This branch adds the other seven of the 12 reviewed pak patches, which are all
-of them the Chinese menu: an embedded CJK face, the zh/en table and the
-drawing path that makes a Chinese row readable, four rounds of rows that were
-still drawn in the wrong language, and the controls page's face-button pips.
-The pause menu, both settings pages and the account page then speak the
-language `ui.language` selects, with English as the default. It is
-host-verified only:
-two clean builds reproduce the profile-guided binary `d95b0a56…`
-(5,250,600 bytes) and so does a rebuild from the corresponding-source archive,
-the build runs with `DSPERATE_PGO_STRICT` and fails if a trained object loses
-its profile or a function no longer matches it, `--version` reports
-`v2.1.1 (baec965)` from both builds, and the pak ZIP and source archive are
-byte-for-byte reproducible. Device requalification of this build, including a
-native sign-in with it, is pending here.
+of them the Chinese menu: an embedded CJK face, the zh/en table and the drawing
+path that makes a Chinese row readable, four rounds of rows that were still
+drawn in the wrong language, and the controls page's face-button pips. The pause
+menu, both settings pages and the account page then speak the language
+`ui.language` selects, with English as the default. It is host-verified only: two
+clean builds reproduce the profile-guided binary `d95b0a56…` (5,250,600 bytes)
+and so does a rebuild from the corresponding-source archive, the build runs with
+`DSPERATE_PGO_STRICT` and fails if a trained object loses its profile or a
+function no longer matches it, `--version` reports `v2.1.1 (baec965)` from both
+builds, and the pak ZIP and source archive are byte-for-byte reproducible.
+Device requalification of this build, including a native sign-in with it, is
+pending here.
 
 The published 2.0.0 source pin was DSperate v2.0.0 with three reviewed pak
 patches. Two clean builds reproduce its binary, and wrapper, profile, archive
