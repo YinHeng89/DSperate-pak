@@ -42,7 +42,7 @@ path that makes a Chinese row readable, four rounds of rows that were still
 drawn in the wrong language, and the controls page's face-button pips. The pause
 menu, both settings pages and the account page then speak the language
 `ui.language` selects, with English as the default. It is host-verified only: two
-clean builds reproduce the binary `72a5cb29…` (5,463,824 bytes) from the
+clean builds reproduce the binary `b318b790…` (5,463,824 bytes) from the
 merged tree, `--version` reports `v3.0.0 (1b76c35)` from both the lock and a
 rebuild, the device verification passes, seven real-executable archive CLI
 checks pass, and the pak ZIP and source archive are byte-for-byte reproducible.
