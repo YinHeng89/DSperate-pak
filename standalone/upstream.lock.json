@@ -7,7 +7,7 @@
     "source_tag": "v3.0.0",
     "source_commit": "1b76c355109c9f7576363ccc023927b3137d3c6f",
     "source_tree": {
-      "sha256": "37b1f21243250f3d32d6880578b4b408ae6b40d639ada164d4fbcd15fc32aeea",
+      "sha256": "f41c137f120b67e7b04f0d7f6a046f8de93a711fe64796420da693a0f4661596",
       "archive": "build/dsperate-work/dsperate-3.0-source.tar.gz",
       "note": "The tree this artifact was built from is not upstream v3.0.0 with the patches in patches/ applied -- that series is the v2.1.1 one and does not apply cleanly to v3.0.0. It is a three-way merge of the v2.1.1-patched tree against pristine v3.0.0, recorded in PROVENANCE.md. The patches list below is kept as the v2.1.1 record only; it does not produce this artifact. The tree is pinned by the sha256 of a SOURCE_DATE_EPOCH-deterministic tar of build/dsperate-src, so the exact merged tree can be recovered and diffed."
     },
@@ -142,7 +142,7 @@
   },
   "artifact": {
     "file_name": "dsperate",
-    "sha256": "4234f15181f3c7e8e338b0bc4a8499f5963bec2999daed373173606b77b7299c",
+    "sha256": "f90693d2a8d0a2a6d7f4f2fd87b79710dfc0da7f8194028ba5f1db3845bff3a8",
     "size_bytes": 5463824,
     "note": "Recorded after the build described by this lock: the merged v3.0.0 tree, SOURCE_DATE_EPOCH pinned to 1b76c35's committer time, -DDSPERATE_CHEEVOS_VERSION=3.0.0, no PGO, then $CROSS-strip --strip-unneeded, which is what the v2.1.1 pipeline did too and what the device verification requires. The binary embeds the WenQuanYi Micro Hei subset and draws the CJK blocks through it (0006); Latin keeps the 5x7 grid and every row goes through tr_text before it is drawn (0007, 0009); every string the menu can paint is keyed in the language the table resolves, including the achievement status line the account page wraps (0008, 0010, 0012); and the face-button pips follow the pad's own naming of x and y (0011). It does not carry a PGO profile (see build.pgo_note) and it was built without Vulkan, because the pinned toolchain image has no vulkan.h: the GPU 3D row is a no-op on this build and the setting says so in Chinese. CI is the independent second-machine verifier; investigate any mismatch rather than overwriting this value."
   },
