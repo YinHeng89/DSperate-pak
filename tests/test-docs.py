@@ -54,10 +54,24 @@ def main() -> int:
 
     pinned = {binary, notice, lock["pgo"]["sha256"],
               lock["toolchain"]["digest"].removeprefix("sha256:")}
+    # The merged tree the v3.0.0 artifact is built from, and every earlier
+    # release's recorded artifact and profile: PROVENANCE quotes all of them as
+    # history, and the lock pins all of them, so quoting one is never a drift.
+    if "source_tree" in lock.get("core", {}):
+        pinned.add(lock["core"]["source_tree"]["sha256"])
+    for released in lock.get("history", []):
+        for key in ("artifact_sha256",):
+            if released.get(key):
+                pinned.add(released[key])
+        if released.get("artifact_sha256"):
+            pinned.add(released["artifact_sha256"][:8])
     for full in sorted(set(re.findall(r"(?<![0-9a-f])[0-9a-f]{64}(?![0-9a-f])", provenance))):
         check(full in pinned, f"PROVENANCE.md sha256 {full[:12]}… is not one the lock pins")
 
-    short_ok = {binary[:8], notice[:8]}
+    short_ok = {binary[:8], notice[:8]} | {
+        released["artifact_sha256"][:8]
+        for released in lock.get("history", []) if released.get("artifact_sha256")
+    }
     for name, text in (("README.md", readme), ("PROVENANCE.md", provenance)):
         for short in sorted(set(re.findall(r"`?([0-9a-f]{8})…", text))):
             check(short in short_ok, f"{name} cites {short}…, which is not the locked binary")

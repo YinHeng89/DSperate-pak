@@ -8,19 +8,33 @@ Everything here is measured from the build, not from memory.
 | | |
 | --- | --- |
 | Upstream | `https://github.com/beebono/DSperate.git` |
-| Tag | `v2.1.1` |
-| Commit | `baec96501802bb04203cac07b420c67eff8054b8` |
+| Tag | `v3.0.0` |
+| Commit | `1b76c355109c9f7576363ccc023927b3137d3c6f` |
 | Licence | GPL-3.0-or-later (`LICENSE`) |
-| Pak base | `cfb037e` (`v2.1.1`, merge of PR #6) &mdash; the released pak this branch adds the Chinese series to |
-| Patches | `patches/0001-pak-cache-and-archive-policy.patch`, `patches/0002-save-durability.patch`, `patches/0003-lid-resume-no-fabricated-close.patch`, `patches/0004-deterministic-version.patch`, `patches/0005-dsperate-ra-account-adapter.patch`, `patches/0006-chinese-localization.patch`, `patches/0007-zh-menu-and-ui-language.patch`, `patches/0008-cjk-drawing.patch`, `patches/0009-english-rows-through-tr-text.patch`, `patches/0010-rest-of-the-menu-in-the-set-language.patch`, `patches/0011-face-pips-that-follow-the-pad-own-naming.patch` and `patches/0012-achievement-status-in-the-set-language.patch` (sha256-locked; see below) |
+| Pak base | `cfb037e` (`v2.1.1`, merge of PR #6) &mdash; the released pak the Chinese series started from |
+| Source tree | sha256 `a3a612b2d6f5f4eefa20f4dfdad0ed930c1d0bf0295faf45b7cfaba98559aa50` &mdash; a `SOURCE_DATE_EPOCH`-deterministic tar of the merged tree; it pins the exact source this binary was built from |
+| Patches | `patches/0001-pak-cache-and-archive-policy.patch`, `patches/0002-save-durability.patch`, `patches/0003-lid-resume-no-fabricated-close.patch`, `patches/0004-deterministic-version.patch`, `patches/0005-dsperate-ra-account-adapter.patch`, `patches/0006-chinese-localization.patch`, `patches/0007-zh-menu-and-ui-language.patch`, `patches/0008-cjk-drawing.patch`, `patches/0009-english-rows-through-tr-text.patch`, `patches/0010-rest-of-the-menu-in-the-set-language.patch`, `patches/0011-face-pips-that-follow-the-pad-own-naming.patch` and `patches/0012-achievement-status-in-the-set-language.patch` (the v2.1.1 series, sha256-locked; see below) |
 
-## Patches
+## Patches, and why v3.0.0 is not them
 
-The 12 patches are locked by sha256 in `upstream.lock.json`; the build
-applies them in order and refuses a patch whose hash differs.
+The 12 patches are locked by sha256 in `upstream.lock.json`. For v2.1.1 they
+were the build: the pinned commit plus the series, applied in order, and the
+build refused a patch whose hash differed.
 
-Reviewed against [upstream v2.1.1](https://github.com/beebono/DSperate/releases/tag/v2.1.1)
-on 2026-09-21:
+They are not the v3.0.0 build. Upstream v3.0.0 moved `text_width`,
+`draw_text`, the settings tables and the version generator, and the series does
+not apply cleanly to it. What the v3.0.0 binary is built from is a three-way
+merge of the v2.1.1-patched tree against pristine v3.0.0, with about 29
+conflict blocks resolved by hand (the settings page losing the CPU TUNING rows
+v3.0.0 deleted, the menu's widest-row constant measured against the Chinese
+string, the CLI whitelist taking the union of both sides). The v2.1.1 series is
+kept in `patches/` and still locked, because it is what the v2.1.1 record and
+`history[0]` describe; it does not produce this artifact. The artifact's source
+is pinned instead by the source-tree sha256 above, from a deterministic tar of
+the merged tree.
+
+Reviewed against [upstream v3.0.0](https://github.com/beebono/DSperate/releases/tag/v3.0.0)
+on 2026-09-28:
 
 | Patch | Decision |
 | --- | --- |
@@ -191,6 +205,18 @@ which way the pad names them, `position` by default and `printed` on this pak,
 and the pip and the alias are taken from the other row when it is `printed`.
 The pak ships the key and migrates it as revision 5 of the defaults.
 
+v3.0 adds `pad.face_fix`, which is on by default and is the same correction
+done automatically: it compares the pad's SDL mapping against the kernel's
+positional gamepad codes and, finding the printed X above and the printed Y to
+the left of where SDL expects them, renumbers the raw button before the
+bindings above are read. That is the other half of revision 4's fix, and the
+two halves cancel. On this device it turns a press on the button printed Y
+into `pad.x`, so the v2.1.1 controls would silently come back swapped under
+v3.0 for anyone who upgraded rather than reinstalled. The defaults are revised
+to 6, migrated as `pad.face_fix = off`, which leaves the explicit binding as
+the only half in play. A player who sets `face_fix = auto` themselves keeps it:
+the migration only seeds a key that is missing.
+
 `standalone/patches/0012-achievement-status-in-the-set-language.patch` does the
 same for the account page's status line, which 0005 rewrote. The page wraps
 that line to the panel, so what reaches `draw_text` is a fragment and never the
@@ -210,10 +236,70 @@ these when the tests arm the check, and the menu test walks every page -- by
 row, into the slot page, into delete mode and through every value every row can
 hold -- and requires zero. `standalone/check-upstream-text.py` reads the UI text
 out of a pristine upstream tree and compares it with
-`standalone/localization.baseline.tsv` (531 entries at the pinned commit), so an
+`standalone/localization.baseline.tsv` (490 entries at the pinned commit), so an
 upstream release that adds or rewords screen text stops the pack with exit 3
 rather than shipping a string nobody translated; `make check-upstream` runs
 that alone and `standalone/repack.sh` runs it before a pack.
+
+## What the merge cost the table, and what now catches it
+
+The table is 287 zh/en pairs. It was 199 when 0007 wrote it, and the three-way
+merge into v3.0.0 lost 28 of the rows the later patches had added while keeping
+the call sites that read them. `tr_text` answers for the string it is handed, so
+a row whose entry is missing is not a row that draws a gap: it is a row that
+draws Chinese with English set, and the only thing that can tell the two apart
+is the leak counter, and only on a path the walk takes. Four kinds of string had
+lost their entries by then, and all four are fixed here rather than in a patch,
+because the tree they belong to is this one:
+
+- **Notes the settings tables carry.** A note reaches the canvas through
+  `tr_text` only if the page asks for it, so it has no `tr_text` call of its own
+  for a scanner to find, and until 2026-09-28 none were found. `fit()` resolves
+  the string and only then cuts it to the panel, which makes a missing note
+  worse than a missing label: it is not one row in Chinese, it is the row every
+  time it is cut. `video.aa` and `video.gpu3d` were both missing theirs.
+- **Keys the table reworded once.** An entry keyed
+  `两块屏幕上下叠放或左右并排时的面板像素间距` was never a string any source line
+  says, and its English was upstream's note minus the second sentence. The real
+  note, from `video.screen_gap`, is the entry now.
+- **The Controls page's own key names.** Fifteen of `kExtras[].label` were
+  written in Chinese and resolved nowhere, so the page that translates itself
+  was the one page whose rows stayed Chinese. They go through `tr_text` now,
+  where every other piece of the page's wording goes.
+- **A setting the merge kept.** `emu.fast_load` is a v2.1.1 key that v3.0.0
+  dropped and nothing reads; the merge kept it because the v2.1.1 side had it
+  and takes its CLI whitelist as a union. A switch that does nothing but be
+  switchable is worse than no switch, so the row is gone and the defaults stay
+  v3.0.0's.
+
+`standalone/check-tr-coverage.py` is the guard. It reads the table and asks a
+specific question -- is *this* string in it -- rather than comparing sets, so it
+has no baseline to drift from, and it checks four kinds of site: `tr_text` with a
+string constant, `kActionLabels`, `kExtras`' label, and the string arguments of
+the settings helpers (`number`, `pick`, `boolean`). The last of those is what the
+first three miss, and it is what the two missing notes were missing from. A
+literal carrying Han with no entry fails the run in either direction: the same
+literal reached with Chinese set and no English entry draws English.
+
+`make test-tr-coverage` runs it. `standalone/check-upstream-text.py` only ever
+saw `tr_text` call sites, so it could not see any of this either.
+
+The same thing happened one level up: `src/frontend/sdl/CMakeLists.txt` had lost
+`input.cpp` from its `add_executable`, which is upstream's own translation unit
+and the one that defines `Input::handle`, `update_stylus`, `collisions` and
+`close`, all of which `main.cpp` and `menu.cpp` call. Everything else compiled
+and only the link failed, with eleven undefined symbols, so nothing short of a
+link can catch it. The unit is back in the list, in upstream's position, and the
+comment above it says why it is there.
+
+The C++ tests were wired into `make check` as `make test-cpp` at the same time.
+Nothing reached them before, and one of the three could not compile:
+`g_strict_i18n` and `g_i18n_leaks` are defined in `menu.cpp` and declared in no
+header, so `menu_test.cpp` had never built. The two declarations are in
+`i18n.h` now, next to `tr_text`, which is the only header that carries those
+names. `test_input` does not build on a macOS host -- `gpu_present.h` wants
+`<SDL.h>` and `display_fbdev.h` wants `linux/fb.h` -- and the target says so
+with a SKIP rather than a pass.
 
 `standalone/patches/0003-lid-resume-no-fabricated-close.patch` stops the
 host-resume lid pulse from fabricating a close on a device with no lid switch
@@ -276,6 +362,21 @@ CMake configuration (see `standalone/build-in-container.sh`):
 deterministic.
 
 ## Profile-guided optimisation
+
+**This build has no PGO profile.** Upstream v3.0.0 ships profiles trained by
+GCC 13.3.0; the MLP1 toolchain is Buildroot GCC 12.3.0, and CMake's fingerprint
+check refuses the mismatch (profile 13.3.0, this build `2d22e81d`, recorded as
+`pgo.build_fingerprint` in the lock), so the
+v3.0.0 build runs with `-DDSPERATE_PGO=off` and plain `-O2`. That is a
+performance difference and not a correctness one, but it is a real one: the
+emulator was measurably faster under the retrained profile on v2.1.1, and no
+performance claim is made for this candidate. Training a profile against the
+v3.0.0 source needs eight ROM play sessions on the device and a profile that
+survives a tree this repository does not produce by patching; until that
+exists, the honest setting is off, and `upstream.lock.json` says so with
+`pgo.state = "none"` rather than quietly dropping the field. The v2.1.1
+profile, and what training it took, is recorded below and in
+`history[0].pgo`.
 
 The build consumes a PGO profile trained with **this same toolchain** (Buildroot
 GCC 12.3.0) and these same flags, against the patched v2.1.1 source. Upstream
@@ -350,11 +451,16 @@ highest glibc symbol version is `GLIBC_2.38`, the device's glibc.
 
 | | `bin/dsperate` | `bin/dsperate-notice` |
 | --- | --- | --- |
-| Source | upstream at the pinned commit, plus the locked patches | `standalone/notice/notice.c` (this repository) |
+| Source | the merged tree pinned by the source-tree sha256 above | `standalone/notice/notice.c` (this repository) |
 | Licence | GPL-3.0-or-later | MIT |
-| sha256 | `d95b0a56830c309bc170cef2114ef313813f5fa257a2f439da30fa9a7fb63b66` | `c52bf4d447c5c855dd02dfb24d8eef962a5d3d079c15b3e4438ae2a5df34a160` |
-| Size | 5,250,600 bytes | 14,224 bytes |
-| Reproduced | two clean `FORCE=1` PGO builds agreed byte for byte | `FORCE=1` builds agreed byte for byte |
+| sha256 | `094791cf835710863ac9cacc0022d95c7d07dd86673cdcf578fccfaa6c91d4c5` | `c52bf4d447c5c855dd02dfb24d8eef962a5d3d079c15b3e4438ae2a5df34a160` |
+| Size | 5,463,824 bytes | 14,224 bytes |
+| Reproduced | two clean builds agreed byte for byte, less the PGO profile (below) | `FORCE=1` builds agreed byte for byte |
+
+The emulator is stripped with `$CROSS-strip --strip-unneeded`, the same step
+the v2.1.1 pipeline took and the device verification requires: an unstripped
+build fails `standalone/verify-binary.sh` on sight, and it is 10&times; the size.
+The notice program is unchanged from v2.1.1.
 
 The notice program is the fullscreen message the wrapper shows when a launch
 cannot proceed. It links only SDL2 and SDL_ttf, both provided by the MLP1, and
@@ -395,18 +501,34 @@ does not confirm the real tier, so a silently stubbed build cannot ship.
 The dmabuf allocation, Weston import, orientation and performance are qualified
 on the device separately; the SDL window-surface route remains the fallback.
 
-## v2.0.0 verification (historical)
+## Verification status
 
-The v2.0.0 release checks below are retained as history. The v2.1.1 candidate in
-this revision is host-verified only: the patched source builds with the retrained
-GCC 12.3.0 profile to `d95b0a56…`, two clean `FORCE=1` builds agree, the strict
-profile check passes, `--version` reports
-`v2.1.1 (baec965)` from the lock, and `make check`, `make dist-pakrat` and
-`make dist-source` pass (118 wrapper checks, 14 MLP1 profile checks, the
-27 pinned account fixtures, the account state and bridge fault tests, and
-packaged-tree validation). Device requalification of v2.1.1, including the
-performance the new profile must re-measure and a native sign-in with this
-exact build, is pending.
+The v2.0.0 release checks below are retained as history. The v3.0.0 candidate
+this revision ships is host-verified only: the merged tree builds to
+`094791cf…` (5,463,824 bytes) with `SOURCE_DATE_EPOCH` pinned and
+`DSPERATE_CHEEVOS_VERSION=3.0.0`, `--version` reports `v3.0.0 (1b76c35)` from
+the lock's own exported identity, the device verification passes (AArch64,
+stripped, no RPATH, `GLIBC_2.38` ceiling, every `NEEDED` library on the MLP1
+allowlist), seven real-executable archive CLI checks pass, and `make check`,
+`make validate` and `make package-mlp1` pass (42 lock checks, 118 wrapper
+checks, the 27 pinned account fixtures, the account state and bridge fault
+tests, and packaged-tree validation). Device requalification of this build,
+including the performance an absent PGO profile means to re-measure and a
+native sign-in with this exact build, is pending.
+
+Two things this candidate is not, stated here because neither shows up in a test
+run. It carries no PGO profile (see above), so it is slower than the v2.1.1 it
+replaces. It was built without Vulkan, because the pinned toolchain image has no
+`vulkan.h` and upstream v3.0.0's own CI installs the headers to get them; the
+GPU 3D setting is therefore inert here, and it says so in Chinese on the
+settings page rather than failing silently. A build with the headers would
+enable that tier.
+
+The v2.1.1 record, for comparison with what this revision changes: the patched
+source built with the retrained GCC 12.3.0 profile to `d95b0a56…`, two clean
+`FORCE=1` builds agreed, the strict profile check passed, and `--version`
+reported `v2.1.1 (baec965)` from the lock. Its artifact hashes are kept in
+`upstream.lock.json` under `history`.
 
 Two clean `FORCE=1` builds agreed on both artifact hashes. The SDK, flags and
 runtime library allowlist are unchanged. The larger emulator contains the new

@@ -42,13 +42,15 @@ path that makes a Chinese row readable, four rounds of rows that were still
 drawn in the wrong language, and the controls page's face-button pips. The pause
 menu, both settings pages and the account page then speak the language
 `ui.language` selects, with English as the default. It is host-verified only: two
-clean builds reproduce the profile-guided binary `d95b0a56…` (5,250,600 bytes)
-and so does a rebuild from the corresponding-source archive, the build runs with
-`DSPERATE_PGO_STRICT` and fails if a trained object loses its profile or a
-function no longer matches it, `--version` reports `v2.1.1 (baec965)` from both
-builds, and the pak ZIP and source archive are byte-for-byte reproducible.
-Device requalification of this build, including a native sign-in with it, is
-pending here.
+clean builds reproduce the binary `094791cf…` (5,463,824 bytes) from the
+merged tree, `--version` reports `v3.0.0 (1b76c35)` from both the lock and a
+rebuild, the device verification passes, seven real-executable archive CLI
+checks pass, and the pak ZIP and source archive are byte-for-byte reproducible.
+It carries no PGO profile, because none trained against the v3.0.0 source fits
+this toolchain, and it was built without Vulkan, so the GPU 3D setting is inert
+here; both are written up in `standalone/PROVENANCE.md` rather than left
+silent. Device requalification of this build, including a native sign-in with
+it, is pending here.
 
 The published 2.0.0 source pin was DSperate v2.0.0 with three reviewed pak
 patches. Two clean builds reproduce its binary, and wrapper, profile, archive

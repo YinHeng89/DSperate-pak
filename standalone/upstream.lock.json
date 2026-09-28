@@ -1,11 +1,16 @@
 {
   "schema": 1,
-  "note": "Everything needed to reproduce the shipped DSperate binary. A fresh clone of this repository plus Docker is the whole toolchain: no sibling checkout, no locally built image, no opaque downloaded binary. DSperate is built from the pinned commit with the pak's patches in `patches/`, applied in order; each is locked by sha256 and the build refuses a mismatch. `make standalone` refuses a source archive or artifact whose sha256 does not match this file.",
+  "note": "Everything needed to identify the shipped DSperate binary. A fresh clone of this repository plus Docker is the whole toolchain: no sibling checkout, no locally built image, no opaque downloaded binary. For v2.1.1 that meant 'pinned commit plus the patches in patches/, applied in order'; for v3.0.0 it no longer does, because v3.0.0 needs a three-way merge instead of that series -- see core.source_tree, and PROVENANCE.md for what the merge changed. Whatever the route, the result is identified by core.source_tree.sha256 and artifact.sha256, both of which are checked rather than trusted. `make standalone` refuses a source archive or artifact whose sha256 does not match this file. The one thing this lock cannot do is re-derive the v3.0.0 artifact on its own: no PGO profile survives the v3.0.0 source (build.pgo is off and build.pgo_note says why), so a rebuild is byte-comparable but not byte-identical.",
   "core": {
     "id": "dsperate",
     "source_url": "https://github.com/beebono/DSperate.git",
-    "source_tag": "v2.1.1",
-    "source_commit": "baec96501802bb04203cac07b420c67eff8054b8",
+    "source_tag": "v3.0.0",
+    "source_commit": "1b76c355109c9f7576363ccc023927b3137d3c6f",
+    "source_tree": {
+      "sha256": "a3a612b2d6f5f4eefa20f4dfdad0ed930c1d0bf0295faf45b7cfaba98559aa50",
+      "archive": "build/dsperate-work/dsperate-3.0-source.tar.gz",
+      "note": "The tree this artifact was built from is not upstream v3.0.0 with the patches in patches/ applied -- that series is the v2.1.1 one and does not apply cleanly to v3.0.0. It is a three-way merge of the v2.1.1-patched tree against pristine v3.0.0, recorded in PROVENANCE.md. The patches list below is kept as the v2.1.1 record only; it does not produce this artifact. The tree is pinned by the sha256 of a SOURCE_DATE_EPOCH-deterministic tar of build/dsperate-src, so the exact merged tree can be recovered and diffed."
+    },
     "license": "GPL-3.0-or-later",
     "license_path_in_source": "LICENSE"
   },
@@ -15,12 +20,12 @@
     "wayland_define": "-DSDL_VIDEO_DRIVER_WAYLAND=1",
     "wayland_note": "The toolchain sysroot's SDL2 2.28.5 is built without its Wayland driver, so its SDL_config.h leaves SDL_VIDEO_DRIVER_WAYLAND undefined and SDL_syswm.h hides SDL_SysWMinfo's Wayland fields. Defining the macro for this build exposes those fields without changing the toolchain, and is what lets the intended dmabuf tier compile. The public union reserves the fields' space regardless, and the binary links the device's Wayland-capable SDL at runtime. The build fails if the probe or display_wl.cpp does not confirm the real tier.",
     "language": "C++17, upstream CMake/Ninja build",
-    "source_date_epoch": 1789871851,
-    "source_date_note": "The pinned v2.1.1 commit's committer timestamp.",
-    "cheevos_version": "2.1.1",
-    "cheevos_version_note": "Passed explicitly because a shallow checkout has no tags for upstream's `git describe` fallback.",
-    "pgo": "use",
-    "pgo_note": "A fresh aarch64 profile was trained with this pak's own toolchain (Buildroot GCC 12.3.0) and these flags against the patched v2.1.1 source, so its fingerprint matches the release build. Upstream v2.1.1 ships profiles for GCC 10.5 and 12.4.0 only, which this toolchain refuses.",
+    "source_date_epoch": 1790447090,
+    "source_date_note": "The pinned v3.0.0 commit's committer timestamp (1b76c35, 2026-09-26T13:24:50-05:00).",
+    "cheevos_version": "3.0.0",
+    "cheevos_version_note": "Passed explicitly because a shallow checkout's `git describe` fallback is not the one upstream would take; the value is the release tag, which is what DSperate reports to RetroAchievements in its User-Agent.",
+    "pgo": "off",
+    "pgo_note": "There is no PGO profile for this build and none can be used. Upstream v3.0.0 ships profiles trained by GCC 13.3.0; the MLP1 toolchain is Buildroot GCC 12.3.0, and configure refuses with the fingerprint mismatch (profile 13.3.0 vs this build 2d22e81d...). Re-training would need ROM play sessions on this device and a profile that survives the v3.0.0 source, so the v3.0.0 candidate is a PGO-less build. That is a performance, not a correctness, difference: the emulator runs with -O2 (-DCMAKE_BUILD_TYPE=RelWithDebInfo) and no -fprofile-use. Recorded here rather than silently dropped, because a lock that claims a profile it does not carry is worse than one that says none.",
     "cmake": [
       "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
       "-DCMAKE_TOOLCHAIN_FILE=<standalone>/mlp1-toolchain.cmake",
@@ -29,28 +34,39 @@
       "-DDSPERATE_HEADLESS=OFF",
       "-DDSPERATE_CHEEVOS=ON",
       "-DDSPERATE_WAYLAND=ON",
-      "-DDSPERATE_CHEEVOS_VERSION=2.1.1",
-      "-DDSPERATE_PGO=use",
-      "-DDSPERATE_PGO_STRICT=ON",
-      "-DDSPERATE_PGO_DIR=/standalone/pgo/aarch64"
+      "-DDSPERATE_CHEEVOS_VERSION=3.0.0",
+      "-DDSPERATE_PGO=off"
     ]
   },
   "pgo": {
-    "dir": "standalone/pgo/aarch64",
-    "sha256": "cd37cc840f216c5cc1cf79fbf3ce901796fe94ab94ca0381657ef9637b425d63",
-    "files": 98,
-    "fingerprint": "e5053f2d1f5b27e9ed70bda94b614845979aa599",
+    "state": "none",
+    "sha256": null,
+    "dir": null,
+    "files": 0,
+    "build_fingerprint": "2d22e81dd634b4f0237a38ab089fbe6ee63d0368",
     "compiler": "12.3.0 (aarch64-buildroot-linux-gnu)",
-    "source_commit": "baec96501802bb04203cac07b420c67eff8054b8",
-    "date": "2026-09-21T20:20Z",
-    "scenes": "mlbis sm64 etody dbori meteos gsdd nsmb",
-    "note": "Trained with this pak's toolchain and flags against the patched v2.1.1 tree, so the fingerprint matches the release build. The scenes are upstream's recorded replays; `st` was skipped because its save state is for another ROM revision, which the loader refuses. The headless frontend is the training build; the SDL frontend, rcheevos and the reference kernels are never trained. Verify with -DDSPERATE_PGO_STRICT=ON: 0 unexpected objects without a profile and 0 coverage mismatches."
+    "note": "There is no profile behind this artifact. Upstream v3.0.0 ships profiles trained by GCC 13.3.0; this toolchain is Buildroot GCC 12.3.0, so configure stops with a fingerprint mismatch (profile 13.3.0 vs 2d22e81d...) and the build falls back to -DDSPERATE_PGO=off. build_fingerprint is the fingerprint this build's own flags and compiler hash to, which is what a profile would have to match; it is recorded so the gap is visible rather than silent. The v2.1.1 profile this pak itself trained is in history[0].pgo; it does not apply here."
   },
   "version": {
-    "tag": "v2.1.1",
-    "commit": "baec965",
-    "note": "Locked --version identity. The build exports DSPERATE_LOCK_VERSION and DSPERATE_LOCK_COMMIT, and cmake/version.cmake prefers them over git, so a source archive without git and a patched checkout git would call dirty both report v2.1.1 (baec965)."
+    "tag": "v3.0.0",
+    "commit": "1b76c35",
+    "note": "Locked --version identity. The build exports DSPERATE_LOCK_VERSION and DSPERATE_LOCK_COMMIT, and cmake/version.cmake prefers them over git, so a source archive without git, and a patched checkout git would call dirty, both report v3.0.0 (1b76c35). Without those two the merged tree reports the same tag but the short HEAD hash plus -dirty, because the merge lives in the working tree; the exported pair is what makes the string stable."
   },
+  "history": [
+    {
+      "tag": "v2.1.1",
+      "commit": "baec965",
+      "source_commit": "baec96501802bb04203cac07b420c67eff8054b8",
+      "artifact_sha256": "d95b0a56830c309bc170cef2114ef313813f5fa257a2f439da30fa9a7fb63b66",
+      "artifact_size_bytes": 5250600,
+      "pgo": {
+        "sha256": "cd37cc840f216c5cc1cf79fbf3ce901796fe94ab94ca0381657ef9637b425d63",
+        "fingerprint": "e5053f2d1f5b27e9ed70bda94b614845979aa599",
+        "files": 98
+      },
+      "note": "The released v2.1.1 record, kept for the audit trail. That binary is no longer in build/standalone (the v3.0.0 build replaced it) and make standalone can no longer reproduce it either, since the pipeline that trained its PGO profile and applied patches 0001..0012 to the v2.1.1 tree is described by this file as it stood and not by its current state. See PROVENANCE.md."
+    }
+  ],
   "patches": [
     {
       "file": "0001-pak-cache-and-archive-policy.patch",
@@ -126,9 +142,9 @@
   },
   "artifact": {
     "file_name": "dsperate",
-    "sha256": "d95b0a56830c309bc170cef2114ef313813f5fa257a2f439da30fa9a7fb63b66",
-    "size_bytes": 5250600,
-    "note": "Recorded after two clean FORCE=1 builds of v2.1.1 with SOURCE_DATE_EPOCH pinned and every input locked (patches 0001..0012, the retrained PGO profile). The binary embeds the WenQuanYi Micro Hei subset from the recorded Debian package and draws the CJK blocks through it (0006); Latin keeps the 5x7 grid and every row goes through tr_text before it is drawn (0007, 0009); every string the menu can paint is keyed in the language the table resolves, including the achievement status line the account page wraps (0008, 0010, 0012); and the face-button pips follow the pad's own naming of x and y (0011). CI is the independent second-machine verifier; investigate any mismatch rather than overwriting this value."
+    "sha256": "094791cf835710863ac9cacc0022d95c7d07dd86673cdcf578fccfaa6c91d4c5",
+    "size_bytes": 5463824,
+    "note": "Recorded after the build described by this lock: the merged v3.0.0 tree, SOURCE_DATE_EPOCH pinned to 1b76c35's committer time, -DDSPERATE_CHEEVOS_VERSION=3.0.0, no PGO, then $CROSS-strip --strip-unneeded, which is what the v2.1.1 pipeline did too and what the device verification requires. The binary embeds the WenQuanYi Micro Hei subset and draws the CJK blocks through it (0006); Latin keeps the 5x7 grid and every row goes through tr_text before it is drawn (0007, 0009); every string the menu can paint is keyed in the language the table resolves, including the achievement status line the account page wraps (0008, 0010, 0012); and the face-button pips follow the pad's own naming of x and y (0011). It does not carry a PGO profile (see build.pgo_note) and it was built without Vulkan, because the pinned toolchain image has no vulkan.h: the GPU 3D row is a no-op on this build and the setting says so in Chinese. CI is the independent second-machine verifier; investigate any mismatch rather than overwriting this value."
   },
   "notice": {
     "file_name": "dsperate-notice",
@@ -142,10 +158,11 @@
   "localization": {
     "scanner": 1,
     "baseline_file": "standalone/localization.baseline.tsv",
-    "baseline_commit": "baec96501802bb04203cac07b420c67eff8054b8",
-    "baseline_tag": "v2.1.1",
-    "fingerprint": "b7c405a332fb44694da40a6d38e6b52db6024ca623ccc3dc68737d58bc2d47e0",
-    "entries": 531,
+    "baseline_commit": "1b76c355109c9f7576363ccc023927b3137d3c6f",
+    "baseline_tag": "v3.0.0",
+    "fingerprint": "809474ad14a4d6afe4637ee8e9447bfa4e50eec7e65aa2114a389134113d8f6c",
+    "entries": 490,
+    "check": " Against this baseline, the localized v3.0.0 tree draws 248 UI strings, of which 219 are not in the baseline; 213 of those carry Han and the other 6 are one ASCII technical label or a code comment (1X, 60 fps, < %s >, AUTO EMPTY, BIRTHDAY MONTH 11, the slot-row comment). Every string a player can read is covered. The v2.1.1 baseline's fingerprint is b7c405a332fb44694da40a6d38e6b52db6024ca623ccc3dc68737d58bc2d47e0 over 531 entries. ",
     "note": "The menu's UI text at the pinned commit, as check-upstream-text.py reads it. repack.sh re-reads the same files out of the newest upstream tag and stops with exit 3 on anything the localization does not cover, so a pack never ships a string nobody translated."
   }
 }

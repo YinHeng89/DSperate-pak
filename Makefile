@@ -53,7 +53,7 @@ IN_IMAGE = docker run --rm --user "$$(id -u):$$(id -g)" -e HOME=/tmp \
 	-v "$(REPO_ROOT)":"$(REPO_ROOT)":ro -v "$(BUILD)":"$(BUILD)" -w "$(REPO_ROOT)" \
 	"$(IMAGE_REF)"
 
-.PHONY: all standalone verify-standalone package-mlp1 dist-pakrat dist-source validate test-wrapper test-profile test-pgo test-lock test-docs test-ra-account test-validate-pak test-archive-cli test-version test-archives check clean distclean help
+.PHONY: all standalone verify-standalone package-mlp1 dist-pakrat dist-source validate test-wrapper test-profile test-pgo test-lock test-docs test-tr-coverage test-cpp test-ra-account test-validate-pak test-archive-cli test-version test-archives check clean distclean help
 
 all: dist-pakrat
 
@@ -173,6 +173,20 @@ test-lock:
 test-docs:
 	@python3 "$(REPO_ROOT)/tests/test-docs.py"
 
+# The translation table, which check-upstream-text.py does not see because it is
+# not upstream text: a string the merger dropped keeps its call site and loses
+# its entry, tr_text returns what it was handed, and the row draws in the
+# language that was not asked for. Fails on any literal with no entry, in
+# either direction.
+test-tr-coverage:
+	@python3 "$(REPO_ROOT)/standalone/check-tr-coverage.py"
+
+# The C++ unit tests in the pinned tree, which no make target reached before
+# this. They are compiled directly rather than through CMake, so `make check`
+# needs no CMake in the repo; see tests/test-cpp.sh for what runs where.
+test-cpp:
+	@bash "$(REPO_ROOT)/tests/test-cpp.sh"
+
 # standalone-ra-account-v1: the pinned leaf-contracts fixtures replayed through
 # the adapter compiled out of patch 0005, plus its state and bridge fault tests.
 # Host C++ only; no build, Docker or device.
@@ -196,7 +210,7 @@ test-version: standalone dist-source
 test-archives: package-mlp1
 	@bash "$(REPO_ROOT)/tests/test-archives.sh" "$(BUILD)"
 
-check: validate test-wrapper test-profile test-pgo test-lock test-docs test-ra-account test-validate-pak package-mlp1 test-archive-cli
+check: validate test-wrapper test-profile test-pgo test-lock test-docs test-tr-coverage test-cpp test-ra-account test-validate-pak package-mlp1 test-archive-cli
 	@python3 "$(REPO_ROOT)/scripts/validate-pak.py" \
 		--contract "$(CONTRACT_DIR)" --pak "$(PACKAGE)" --packaged
 

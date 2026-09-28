@@ -72,6 +72,9 @@ DIGEST="$(lock toolchain digest)"
 CROSS="$(lock toolchain cross_prefix)"
 ARTIFACT="$(lock artifact file_name)"
 EXPECTED_SHA="$(lock artifact sha256)"
+# Present when the artifact is built from the merged tree rather than from the
+# pinned commit plus patches/, which is the case the v3.0.0 lock is in.
+SOURCE_TREE_SHA="$(lock core source_tree sha256 2>/dev/null || true)"
 NOTICE_ARTIFACT="$(lock notice file_name)"
 EXPECTED_NOTICE_SHA="$(lock notice sha256)"
 SOURCE_EPOCH="$(lock build source_date_epoch)"
@@ -89,6 +92,22 @@ mkdir -p "$BUILD_DIR" "$WORK_DIR" "$OUT_DIR"
 if [ -f "$OUT_DIR/$ARTIFACT" ] && [ "${FORCE:-0}" != "1" ]; then
   say "binary already present (FORCE=1 to rebuild)"
 else
+  if [ -n "$SOURCE_TREE_SHA" ]; then
+    # The artifact is built from the merged tree, not from the pinned commit
+    # plus patches/: that series is the v2.1.1 one and does not apply to
+    # v3.0.0, which core.source_tree.note records. So this tree is used as it
+    # stands, and nothing here resets it. A reset is what a build once did to
+    # this very tree, and it discarded the localization along with the reset --
+    # the tree's own edits are the reason it is pinned at all.
+    [ -d "$SRC_DIR/src" ] \
+      || die "$SRC_DIR is not the merged tree the lock describes"
+    say "building from the merged tree pinned by core.source_tree"
+    if [ "${FORCE:-0}" = "1" ]; then
+      say "forcing a clean rebuild"
+      rm -rf "$WORK_DIR" "$OUT_DIR"
+      mkdir -p "$WORK_DIR" "$OUT_DIR"
+    fi
+  else
   if [ ! -d "$SRC_DIR/.git" ]; then
     say "cloning $SOURCE_URL (large; one time)"
     git init -q "$SRC_DIR"
@@ -143,6 +162,7 @@ PY
 $PATCH_ROWS
 EOF
   fi
+  fi
 
   if [ "$PGO_MODE" = "use" ]; then
     # The PGO profile is a build input like a patch: verify it against the lock
@@ -159,9 +179,11 @@ EOF
   actual: $actual_pgo
   locked: $PGO_SHA"
     say "building in $IMAGE_REF with the locked PGO profile ($PGO_DIR_REL)"
+    PGO_DIR_IN_CONTAINER="/standalone/$PGO_DIR_REL"
   else
     [ "$PGO_MODE" = "off" ] || die "unsupported build.pgo mode: $PGO_MODE"
     say "building in $IMAGE_REF without PGO (${PGO_MODE})"
+    PGO_DIR_IN_CONTAINER=""
   fi
   docker run --rm \
     -e CROSS="$CROSS" \
@@ -172,6 +194,8 @@ EOF
     -e CHEEVOS_VERSION="$CHEEVOS_VERSION" \
     -e DSPERATE_LOCK_VERSION="$APP_VERSION" \
     -e DSPERATE_LOCK_COMMIT="$APP_COMMIT" \
+    -e PGO_MODE="$PGO_MODE" \
+    -e PGO_DIR="$PGO_DIR_IN_CONTAINER" \
     -v "$SRC_DIR":/src \
     -v "$WORK_DIR":/work \
     -v "$OUT_DIR":/out \

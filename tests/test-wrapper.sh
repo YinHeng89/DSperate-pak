@@ -233,6 +233,7 @@ check_contains "$GLOBAL_INI" "stylus_button.alt = +lefttrigger" "missing stylus_
 check_contains "$GLOBAL_INI" "pause.alt = guide" "missing pause.alt added"
 check_contains "$GLOBAL_INI" "x = x" "missing pad.x bind added"
 check_contains "$GLOBAL_INI" "y = y" "missing pad.y bind added"
+check_contains "$GLOBAL_INI" "face_fix = off" "v3.0's own x/y correction turned off"
 check_contains "$GLOBAL_INI" "a = y" "custom pad binding preserved"
 check_contains "$GLOBAL_INI" "layout = vertical" "custom layout preserved"
 [ "$(cat "$STAMP" | tr -d '[:space:]')" = "$SHIPPED_VERSION" ] \
@@ -258,6 +259,21 @@ check_contains "$GLOBAL_INI" "stylus_axis = none" "custom stylus_axis preserved"
 check_contains "$GLOBAL_INI" "stick_dpad = none" "old stick_dpad still migrates beside a custom key"
 check_contains "$GLOBAL_INI" "x = q" "custom pad.x preserved"
 check_contains "$GLOBAL_INI" "y = y" "pad.y added beside a custom pad.x"
+
+# A face_fix the player chose for themselves is left alone; only a missing key
+# is seeded. Turning the automatic correction on is a real choice, not a typo.
+cat >"$GLOBAL_INI" <<'INI'
+[pad]
+stick_dpad = left
+stylus_axis = none
+x = x
+y = y
+face_fix = auto
+INI
+rm -f "$STAMP"
+run_wrapper "$ROM"
+check_contains "$GLOBAL_INI" "face_fix = auto" "a chosen face_fix is not overwritten"
+check_contains "$GLOBAL_INI" "stick_dpad = none" "old stick_dpad still migrates beside a chosen face_fix"
 
 # An interrupted migration (keys written, version not recorded) is safe to
 # repeat: nothing duplicates and the stamp is then written.

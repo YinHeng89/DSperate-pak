@@ -57,8 +57,43 @@ def profile_sha256(root: Path) -> str:
 def main() -> int:
     lock = json.loads(LOCK.read_text(encoding="utf-8"))
     build = lock["build"]
-    check(build.get("pgo") == "use", "lock: build.pgo is 'use'")
+    # 'use' or 'off'. 'off' is a real state, not a missing field: no profile
+    # trained against this source fits this toolchain, and the lock says so.
+    check(build.get("pgo") in ("use", "off"), "lock: build.pgo is 'use' or 'off'")
     pgo = lock["pgo"]
+
+    if pgo.get("state") == "none":
+        # A lock that claims no profile is a state the build has to be able to
+        # express: the container script must pass -DDSPERATE_PGO=off and must
+        # not pass a directory or a strictness switch that names a profile which
+        # is not there. The v2.1.1 profile this pak itself trained is still
+        # pinned under history[0].pgo, so that record stays checkable.
+        check(pgo.get("sha256") is None, "lock: pgo.sha256 is null when there is no profile")
+        check(pgo.get("dir") is None, "lock: pgo.dir is null when there is no profile")
+        check(re.fullmatch(r"[0-9a-f]{40}", pgo.get("build_fingerprint", "")) is not None,
+              "lock: pgo.build_fingerprint is the SHA-1 a future profile would have to match")
+        check("-DDSPERATE_PGO=off" in build["cmake"],
+              "lock: build.cmake turns PGO off")
+        script = BUILD_SCRIPT.read_text(encoding="utf-8")
+        passed = set(re.findall(r"^\s*(-D[A-Z_]+=\S+?)\s*\\?$", script, re.MULTILINE))
+        # The two flags the script takes from the lock through the environment.
+        passed = {flag.replace('"$CHEEVOS_VERSION"', build["cheevos_version"])
+                      .replace('"$PGO_MODE"', build["pgo"]) for flag in passed}
+        locked = {flag.replace("<standalone>", "/standalone") for flag in build["cmake"]}
+        check(passed == locked,
+              f"build-in-container.sh passes exactly the lock's CMake flags "
+              f"(only in script: {sorted(passed - locked)}, only in lock: {sorted(locked - passed)})")
+        check("-DDSPERATE_PGO=off" in passed, "the build turns PGO off")
+        released = [h for h in lock.get("history", []) if h.get("pgo", {}).get("sha256")]
+        check(len(released) == 1 and released[0]["tag"] == "v2.1.1",
+              "the v2.1.1 profile record survives under history")
+        if released:
+            check(released[0]["pgo"]["files"] > 0, "the historical profile record has file count")
+        print("test-pgo: no profile in this lock (build.pgo is off); "
+              "profile-content checks skipped by design")
+        print(f"test-pgo: {checks - failures}/{checks} checks passed")
+        return 1 if failures else 0
+
     root = REPO / pgo["dir"]
     check(root.is_dir(), f"profile directory exists: {pgo['dir']}")
     if not root.is_dir():
@@ -98,7 +133,8 @@ def main() -> int:
     script = BUILD_SCRIPT.read_text(encoding="utf-8")
     passed = set(re.findall(r"^\s*(-D[A-Z_]+=\S+?)\s*\\?$", script, re.MULTILINE))
     # The one flag the script takes from the lock through the environment.
-    passed = {flag.replace('"$CHEEVOS_VERSION"', build["cheevos_version"]) for flag in passed}
+    passed = {flag.replace('"$CHEEVOS_VERSION"', build["cheevos_version"])
+                  .replace('"$PGO_MODE"', build["pgo"]) for flag in passed}
     locked = {flag.replace("<standalone>", "/standalone") for flag in build["cmake"]}
     check(passed == locked,
           f"build-in-container.sh passes exactly the lock's CMake flags "

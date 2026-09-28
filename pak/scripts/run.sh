@@ -377,7 +377,9 @@ if DEFAULTS_VERSION="$(read_version "$DEFAULTS_VERSION_FILE")"; then
         # face X/Y buttons explicitly, because the MLP1 pad's SDL mapping names
         # them by printed label and the stock defaults swapped them. Revision 5
         # tells the emulator the same thing, so the Controls page points its
-        # diamond pips at the button that is actually bound.
+        # diamond pips at the button that is actually bound. Revision 6 turns
+        # off that same correction's automatic half (pad.face_fix), which would
+        # otherwise undo revisions 4 and 5 at run time.
         if [ "$INSTALLED_VERSION" -lt 2 ]; then
             cfg_ensure_key "$GLOBAL_INI" padhotkeys pause.alt guide || die "cannot migrate global config"
         fi
@@ -395,6 +397,13 @@ if DEFAULTS_VERSION="$(read_version "$DEFAULTS_VERSION_FILE")"; then
         fi
         if [ "$INSTALLED_VERSION" -lt 5 ]; then
             cfg_ensure_key "$GLOBAL_INI" pad xy_naming printed || die "cannot migrate global config"
+        fi
+        # Revision 6 turns off v3.0's own correction of the same swap. It runs
+        # on the raw SDL button number before pad.x and pad.y are read, so with
+        # them bound as above it fires X on the button printed Y. Either the
+        # explicit binding or the automatic correction can be on, not both.
+        if [ "$INSTALLED_VERSION" -lt 6 ]; then
+            cfg_ensure_key "$GLOBAL_INI" pad face_fix off || die "cannot migrate global config"
         fi
         record_defaults_version "$DEFAULTS_VERSION" || die "cannot record the defaults version"
         log "defaults migration: $INSTALLED_VERSION -> $DEFAULTS_VERSION"
