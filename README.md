@@ -36,16 +36,22 @@ changed password picked up on the next launch, controls, audio, suspend, and
 about 60 FPS in Contra 4. With DSperate removed, Leaf falls back to DraStic
 and keeps DSperate as the saved choice for when you reinstall it.
 
-This branch adds the other seven of the 12 reviewed pak patches, which are all
-of them the Chinese menu: an embedded CJK face, the zh/en table and the drawing
-path that makes a Chinese row readable, four rounds of rows that were still
-drawn in the wrong language, and the controls page's face-button pips. The pause
-menu, both settings pages and the account page then speak the language
-`ui.language` selects, with English as the default. It is host-verified only: two
-clean builds reproduce the binary `328fb59e…` (5,472,016 bytes) from the
-merged tree, `--version` reports `v3.0.0 (1b76c35)` from both the lock and a
-rebuild, the device verification passes, seven real-executable archive CLI
-checks pass, and the pak ZIP and source archive are byte-for-byte reproducible.
+This branch carries ten reviewed pak patches that sit on top of upstream
+DSperate v3.0.0: patches 0001-0005 are the pak features (cache/archive policy,
+save durability, lid-resume, deterministic `--version`, and the Leaf
+RetroAchievements account adapter), and patches 0006-0010 are the Chinese menu
+(an embedded CJK face, the zh/en table and the drawing path that makes a Chinese
+row readable, the rows that were still drawn in the wrong language, and the
+controls page's face-button pips). The pause menu, both settings pages and the
+account page then speak the language `ui.language` selects, with English as the
+default. The patches are re-anchored onto v3.0.0 as a series in
+`standalone/patches/`, so `make standalone` builds from a clean clone of the
+pinned upstream commit plus that series rather than from a pre-merged tree. It is
+host-verified only: two clean builds reproduce the binary `328fb59e…`
+(5,472,016 bytes) from the pinned commit plus the patch series, `--version`
+reports `v3.0.0 (1b76c35)` from both the lock and a rebuild, the device
+verification passes, seven real-executable archive CLI checks pass, and the pak
+ZIP and source archive are byte-for-byte reproducible.
 It carries no PGO profile, because none trained against the v3.0.0 source fits
 this toolchain, and it was built without Vulkan, so the GPU 3D setting is inert
 here; both are written up in `standalone/PROVENANCE.md` rather than left
@@ -65,6 +71,26 @@ all 35 tested settings, save and state files byte for byte.
 The target is Leaf 0.12.0 with W3/W4 input and Menu support. The pak version
 tracks the upstream emulator, so it is now `2.1.1`.
 See the [implementation plan](https://github.com/Utility-Muffin-Research-Kitchen/umrk-workspace/blob/main/plans/dsperate-standalone-content-pak.md).
+
+## Source & upstreams
+
+The emulator and its packaging come from two different upstreams, and this
+repository keeps them apart so each can move on its own:
+
+- **Emulator source — [beebono/DSperate](https://github.com/beebono/DSperate).**
+  This is what we track for version bumps. `standalone/upstream.lock.json`
+  pins the exact commit, and `make standalone` clones it and applies our patch
+  series on top. To follow a newer release, rebase `standalone/patches/`
+  (0001-0010) onto the new tag — see `standalone/PROVENANCE.md`.
+- **Pak & launch scripts — [UMRK/DSperate-pak](https://github.com/Utility-Muffin-Research-Kitchen/DSperate-pak)**
+  (this repository's `upstream` remote). Their pak contract, `run.sh` launcher
+  and account-adapter fixtures are merged in when they move; the `main` branch
+  here tracks our own shipping state.
+- **Our maintained fork of the source — [YinHeng89/DSperate](https://github.com/YinHeng89/DSperate).**
+  This is where the patch series is developed and rebased: `main` is the v3.0.0
+  baseline and `zh-menu-v3.0.0` carries every local change (features, the
+  Chinese menu and the generated CJK font). Each patch in `standalone/patches/`
+  is a slice of that branch, so a rebase there regenerates the series here.
 
 ## Build
 
