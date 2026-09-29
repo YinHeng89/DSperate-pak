@@ -12,7 +12,7 @@ Everything here is measured from the build, not from memory.
 | Commit | `1b76c355109c9f7576363ccc023927b3137d3c6f` |
 | Licence | GPL-3.0-or-later (`LICENSE`) |
 | Pak base | `cfb037e` (`v2.1.1`, merge of PR #6) &mdash; the released pak the Chinese series started from |
-| Source tree | sha256 `cfc5820c356da4b0188406ab498478e2b8af7589682a56f38630d5af73ec16c1` &mdash; a `SOURCE_DATE_EPOCH`-deterministic tar of the merged tree; it pins the exact source this binary was built from |
+| Source tree | sha256 `4a683a8e85d29ae3491cb14d520166760b9d9fd16af4abc4f0ab3b320ae34fa7` &mdash; a `SOURCE_DATE_EPOCH`-deterministic tar of the merged tree; it pins the exact source this binary was built from |
 | Patches | `patches/0001-pak-cache-and-archive-policy.patch`, `patches/0002-save-durability.patch`, `patches/0003-lid-resume-no-fabricated-close.patch`, `patches/0004-deterministic-version.patch`, `patches/0005-dsperate-ra-account-adapter.patch`, `patches/0006-chinese-localization.patch`, `patches/0007-zh-menu-and-ui-language.patch`, `patches/0008-cjk-drawing.patch`, `patches/0009-english-rows-through-tr-text.patch`, `patches/0010-rest-of-the-menu-in-the-set-language.patch`, `patches/0011-face-pips-that-follow-the-pad-own-naming.patch` and `patches/0012-achievement-status-in-the-set-language.patch` (the v2.1.1 series, sha256-locked; see below) |
 
 ## Patches, and why v3.0.0 is not them
@@ -453,7 +453,7 @@ highest glibc symbol version is `GLIBC_2.38`, the device's glibc.
 | --- | --- | --- |
 | Source | the merged tree pinned by the source-tree sha256 above | `standalone/notice/notice.c` (this repository) |
 | Licence | GPL-3.0-or-later | MIT |
-| sha256 | `07bf0e505e35600ac2cea579c91093d3da3d06aa532e665cfcb33902879db11f` | `c52bf4d447c5c855dd02dfb24d8eef962a5d3d079c15b3e4438ae2a5df34a160` |
+| sha256 | `2e2e3d6ddd96e827dcf035d68030e43749f4a500c91786f5373b2bd3545b07ea` | `c52bf4d447c5c855dd02dfb24d8eef962a5d3d079c15b3e4438ae2a5df34a160` |
 | Size | 5,472,016 bytes | 14,224 bytes |
 | Reproduced | two clean builds agreed byte for byte, less the PGO profile (below) | `FORCE=1` builds agreed byte for byte |
 
@@ -505,7 +505,7 @@ on the device separately; the SDL window-surface route remains the fallback.
 
 The v2.0.0 release checks below are retained as history. The v3.0.0 candidate
 this revision ships is host-verified only: the merged tree builds to
-`07bf0e50…` (5,472,016 bytes) with `SOURCE_DATE_EPOCH` pinned and
+`2e2e3d6d…` (5,472,016 bytes) with `SOURCE_DATE_EPOCH` pinned and
 `DSPERATE_CHEEVOS_VERSION=3.0.0`, `--version` reports `v3.0.0 (1b76c35)` from
 the lock's own exported identity, the device verification passes (AArch64,
 stripped, no RPATH, `GLIBC_2.38` ceiling, every `NEEDED` library on the MLP1
