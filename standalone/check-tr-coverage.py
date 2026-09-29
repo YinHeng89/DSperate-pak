@@ -1,32 +1,36 @@
 #!/usr/bin/env python3
-"""Does every string the menu can draw exist in the translation table?
+"""Does every string the menu can draw have its Chinese?
 
-`tr_text()` resolves a string by matching it against kTr, and returns what it
-was handed when nothing matches. That is the right behaviour for a config
-value the translator never saw -- "left" is a word, not a row -- and the wrong
-one for a literal written in the other language: with English set, a literal
-the table cannot resolve is drawn in Chinese, and with Chinese set the same
-literal is drawn in English. Nothing else catches it. The tests walk the menu
-with the strict flag on and count the leaks they pass through, but a leak on a
-path the walk does not take -- the achievements status line, the Controls page's
-own rows -- draws exactly as clean, and a merge that keeps a call site and
-drops its entry is silent.
+The menu's sources are written in English -- upstream's language, so that a
+rebase stays readable -- and the Chinese lives in one table, tr_data.inc, keyed
+by that English. tr_text() returns what it was handed when nothing matches, so
+an English literal with no entry is a row the player reads in English with
+Chinese set. Nothing else catches it: on screen that row is indistinguishable
+from one that is meant to be English, and the runtime leak check cannot see it
+either, because what it counts is Chinese drawn with English set -- the other
+direction.
 
 So: read the table, read the call sites, and say which literals have no entry.
-A literal is a call to tr_text with a string constant, plus every Chinese
-literal in the two label tables the Controls page reads -- kActionLabels,
-which tr_text is passed, and kExtras' label, which is not.
+A literal is a call to tr_text with a string constant, plus every entry in the
+two label tables the Controls page reads -- kActionLabels, which tr_text is
+passed, and kExtras' label, which is not.
 
-The settings tables are the fourth kind, and they are the ones that get missed:
-a row's label and its note both reach the canvas through tr_text only if the
-page asks for them, so they carry no tr_text of their own to find, and a note
-that is missing still draws -- cut to the panel by fit(), which resolves the
-string before it measures it, so the player sees a clipped line and not a
-translated one. Scanning the helpers' own arguments is what closes that.
+The settings tables are the fourth kind, and they are checked by the C++ test
+instead: tests/menu_test.cpp walks the compiled tables in Chinese mode and asks
+for every row's label, note and choice, which is both exact and immune to the
+shape of the helper that built the row. This script leaves them alone rather
+than guess which of a helper's arguments is the label and which is an ini value.
+
+It also reads the sources the other way round: a Chinese literal anywhere under
+src/ is one the flip to an English baseline missed, and is reported. tests/ is
+exempt, because that is where the expected Chinese lives.
 
 Reported as a list, and as a failure. There is no baseline: the question is not
-whether the set of strings has moved, it is whether a specific string is in it,
-and a baseline would only paper over the answer.
+whether the set of strings has moved, it is whether a specific string has its
+Chinese, and a baseline would only paper over the answer.
+
+This is the check to run after an upstream release: it lists exactly the new
+English strings that still need a line in tr_data.inc, and nothing else.
 """
 
 import argparse
@@ -55,10 +59,10 @@ HELPER = re.compile(r'\b(?:number|pick|boolean)\s*\(')
 
 
 def read_table(path):
-    """Return (zh, en): the two sides of kTr."""
+    """Return {en: zh}: the English the sources write, keyed to its Chinese."""
     with open(path, encoding="utf-8") as f:
         pairs = PAIR.findall(f.read())
-    return {z for z, _ in pairs}, {e for _, e in pairs}
+    return {e: z for e, z in pairs}
 
 
 def literals(blob):
@@ -122,7 +126,7 @@ def main():
     if not os.path.isfile(tr_data):
         print("no translation table at %s" % tr_data)
         return EXIT_MISSING
-    zh, en = read_table(tr_data)
+    table = read_table(tr_data)
 
     sources = sorted(glob.glob(os.path.join(args.src, "src", "**", "*.cpp"), recursive=True))
     sources += sorted(glob.glob(os.path.join(args.src, "tests", "*.cpp")))
@@ -130,27 +134,34 @@ def main():
     missing = []
     for kind, rel, line, s in gather(sources, tr_data):
         if CJK.search(s):
-            if s not in zh:
-                missing.append((kind, rel, line, s, "no entry, so English draws Chinese"))
-        elif kind != "settings.row" and CAPS.match(s) and len(s) >= 2 and s not in en:
+            # A Chinese literal under src/ is one the English baseline missed.
+            # tests/ is where the expected Chinese is written down, so it is
+            # not a source and is not held to this.
+            if not rel.startswith("tests" + os.sep) and kind != "settings.row":
+                missing.append((kind, rel, line, s,
+                                "Chinese in a source; the sources are English now"))
+            continue
+        if s in table:
+            continue                                  # it has its Chinese
+        if kind != "settings.row" and CAPS.match(s) and len(s) >= 2:
             # A settings row's ASCII argument is upstream's own -- "100" is a
-            # default, "DNS" is a protocol's name and "GPU 3D" is the label the
-            # setting goes by. The other tables hold labels the localization
-            # wrote itself, where an all-caps string that the table does not
-            # know is a row reading English with Chinese set.
+            # default, "DNS" is a protocol's name -- and the C++ test asks the
+            # compiled row instead. The other tables hold labels the menu wrote
+            # itself, where an all-caps string the table does not know is a row
+            # reading English with Chinese set.
             missing.append((kind, rel, line, s, "no entry, so Chinese draws English"))
 
     if args.json:
         import json
-        print(json.dumps({"entries": len(zh) + len(en), "checked": len(sources),
+        print(json.dumps({"entries": len(table), "checked": len(sources),
                           "missing": [{"kind": k, "file": f, "line": ln,
                                        "string": s, "why": w} for k, f, ln, s, w in missing]}))
         return EXIT_OK if not missing else EXIT_MISSING
 
     if not args.quiet:
         total = len(gather(sources, tr_data))
-        print("translation table: %d entries across %d sources, %d strings checked"
-              % (len(zh), len(sources), total))
+        print("translation table: %d entries (English -> Chinese) across %d sources, "
+              "%d strings checked" % (len(table), len(sources), total))
         for kind, rel, line, s, why in missing:
             where = ":%d" % line if line else ""
             print("  MISSING  %-16s %s%s  %r  (%s)" % (kind, rel, where, s, why))

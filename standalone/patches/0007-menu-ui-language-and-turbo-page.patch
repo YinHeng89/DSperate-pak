@@ -1,5 +1,5 @@
 diff --git a/src/frontend/sdl/main.cpp b/src/frontend/sdl/main.cpp
-index 61766f0..d09b392 100644
+index 61766f0..0030fe4 100644
 --- a/src/frontend/sdl/main.cpp
 +++ b/src/frontend/sdl/main.cpp
 @@ -29,6 +29,7 @@
@@ -98,7 +98,7 @@ index 61766f0..d09b392 100644
    std::fprintf(stderr, "state: saved %s (%zu KB)\n", path.c_str(), w.data().size() >> 10);
    return true;
  }
-@@ -924,37 +948,68 @@ bool open_displays(const VideoSetup& vs, ds::sdl::Display& display, ds::sdl::Dis
+@@ -924,7 +948,29 @@ bool open_displays(const VideoSetup& vs, ds::sdl::Display& display, ds::sdl::Dis
    return display.open("DSperate", vs.scale, vs.fullscreen, vs.linear, vs.vsync, vs.layout);
  }
  
@@ -112,9 +112,9 @@ index 61766f0..d09b392 100644
 +// value beside each is the same name as the key bound to it, so translating
 +// either side would put one word on both and say nothing.
 +constexpr const char* const kActionLabels[static_cast<int>(ds::sdl::Action::Count)] = {
-+  "退出", "暂停游戏", "快进", "快进开关", "保存存档", "读取存档", "下个槽位", "上个槽位",
-+  "音量+", "音量-", "静音", "下个布局", "上个布局", "交换屏幕", "小窗位置", "全屏", "截图",
-+  "合盖", "麦克风", "帧数",
++  "QUIT", "PAUSE", "FAST FORWARD", "FAST FORWARD TOGGLE", "SAVE STATE", "LOAD STATE", "NEXT SLOT", "PREV SLOT",
++  "VOLUME UP", "VOLUME DOWN", "MUTE", "NEXT LAYOUT", "PREV LAYOUT", "SWAP SCREENS", "PIP CORNER NEXT", "FULLSCREEN", "SCREENSHOT",
++  "LID", "MICROPHONE", "FPS",
 +};
 +static_assert(sizeof(kActionLabels) / sizeof(kActionLabels[0]) == static_cast<int>(ds::sdl::Action::Count),
 +              "one label for every hotkey");
@@ -128,40 +128,20 @@ index 61766f0..d09b392 100644
 +// is however the row reads.
  struct Extra { const char* key_keys; const char* key_pad; const char* label; };
  constexpr Extra kExtras[] = {
--  {"hotkeys.modifier", "padhotkeys.modifier", "MODIFIER"},
--  {nullptr,            "pad.stylus_button",   "STYLUS TAP"},
--  {nullptr,            "pad.stylus_button.alt", "STYLUS TAP (2)"},
--  {nullptr,            "pad.stylus_axis",     "STYLUS STICK"},
--  {nullptr,            "pad.stylus_dpad",     "STYLUS DPAD"},
--  {nullptr,            "pad.stick_dpad",      "STICK DPAD"},
--  {nullptr,            "pad.stick_face",      "STICK ABXY"},
+   {"hotkeys.modifier", "padhotkeys.modifier", "MODIFIER"},
+@@ -934,8 +980,9 @@ constexpr Extra kExtras[] = {
+   {nullptr,            "pad.stylus_dpad",     "STYLUS DPAD"},
+   {nullptr,            "pad.stick_dpad",      "STICK DPAD"},
+   {nullptr,            "pad.stick_face",      "STICK ABXY"},
 -  // Axis remap: push the control the positive direction reads (stick
 -  // right/down, trigger pressed); stores physical axis + inverted flag.
--  {nullptr,            "pad.axis_leftx",      "L STICK RIGHT"},
--  {nullptr,            "pad.axis_lefty",      "L STICK DOWN"},
--  {nullptr,            "pad.axis_rightx",     "R STICK RIGHT"},
--  {nullptr,            "pad.axis_righty",     "R STICK DOWN"},
--  {nullptr,            "pad.axis_lefttrigger", "L2 AXIS"},
--  {nullptr,            "pad.axis_righttrigger", "R2 AXIS"},
-+  {"hotkeys.modifier", "padhotkeys.modifier", "修饰键"},
-+  {nullptr,            "pad.stylus_button",   "触摸笔"},
-+  {nullptr,            "pad.stylus_button.alt", "触摸笔 (2)"},
-+  {nullptr,            "pad.stylus_axis",     "触摸笔摇杆"},
-+  {nullptr,            "pad.stylus_dpad",     "触摸笔方向键"},
-+  {nullptr,            "pad.stick_dpad",      "摇杆方向键"},
-+  {nullptr,            "pad.stick_face",      "摇杆按键"},
 +  // Axis remapping: each row is set by pushing the control the way that axis
 +  // reads positive -- a stick right for X, down for Y, a trigger pressed --
 +  // and stores the physical axis that went, inverted if it went negative.
-+  {nullptr,            "pad.axis_leftx",      "左摇杆 右"},
-+  {nullptr,            "pad.axis_lefty",      "左摇杆 下"},
-+  {nullptr,            "pad.axis_rightx",     "右摇杆 右"},
-+  {nullptr,            "pad.axis_righty",     "右摇杆 下"},
-+  {nullptr,            "pad.axis_lefttrigger", "L2 轴"},
-+  {nullptr,            "pad.axis_righttrigger", "R2 轴"},
- };
- // Rows holding a stick rather than a single control.
- bool extra_is_stick(const char* key) { return std::strcmp(key, "pad.stylus_axis") == 0 || std::strcmp(key, "pad.stick_dpad") == 0 || std::strcmp(key, "pad.stick_face") == 0; }
+   {nullptr,            "pad.axis_leftx",      "L STICK RIGHT"},
+   {nullptr,            "pad.axis_lefty",      "L STICK DOWN"},
+   {nullptr,            "pad.axis_rightx",     "R STICK RIGHT"},
+@@ -948,13 +995,21 @@ bool extra_is_stick(const char* key) { return std::strcmp(key, "pad.stylus_axis"
  bool extra_is_axis_remap(const char* key) { return std::strncmp(key, "pad.axis_", 9) == 0; }
  // e.g. "-righty" -> physical control + whether inverted.
  std::string axis_remap_label(const std::string& v0) {
@@ -170,7 +150,7 @@ index 61766f0..d09b392 100644
 +  // on the console and stay as they are. "反向" is joined after the stick has
 +  // been resolved, for the reason the hotkey rows' " (2)" is: the joined
 +  // string is not an entry, so each half has to reach the table on its own.
-+  if (v0 == "none") return ds::sdl::tr_text("无");
++  if (v0 == "none") return ds::sdl::tr_text("NONE");
    const bool inv = !v0.empty() && v0[0] == '-';
    const std::string v = !v0.empty() && (v0[0] == '-' || v0[0] == '+') ? v0.substr(1) : v0;
 -  std::string n = v == "leftx" ? "L STICK X" : v == "lefty" ? "L STICK Y" : v == "rightx" ? "R STICK X" : v == "righty" ? "R STICK Y"
@@ -178,13 +158,13 @@ index 61766f0..d09b392 100644
 -  for (char& ch : n) ch = static_cast<char>(std::toupper(static_cast<unsigned char>(ch)));
 -  return inv ? n + " INV" : n;
 +  const bool known = v == "leftx" || v == "lefty" || v == "rightx" || v == "righty" || v == "lefttrigger" || v == "righttrigger";
-+  const char* n = v == "leftx" ? "左摇杆 X" : v == "lefty" ? "左摇杆 Y" : v == "rightx" ? "右摇杆 X" : v == "righty" ? "右摇杆 Y"
++  const char* n = v == "leftx" ? "L STICK X" : v == "lefty" ? "L STICK Y" : v == "rightx" ? "R STICK X" : v == "righty" ? "R STICK Y"
 +                : v == "lefttrigger" ? "L2" : v == "righttrigger" ? "R2" : v.c_str();
 +  std::string out = ds::sdl::tr_text(n);
 +  // A name the table has never heard is a file's own spelling, shown as it
 +  // stands -- upper-cased because the font has no lower case.
 +  if (!known) for (char& ch : out) ch = static_cast<char>(std::toupper(static_cast<unsigned char>(ch)));
-+  return inv ? out + " " + ds::sdl::tr_text("反向") : out;
++  return inv ? out + " " + ds::sdl::tr_text("INV") : out;
  }
  bool extra_in_column(const Extra& e, bool pad) { return pad || e.key_keys; }
  int extra_count(bool pad) {
@@ -290,7 +270,7 @@ index 61766f0..d09b392 100644
 +      // the page reads.
        if (extra_is_stick(key))   // true/false: stick_dpad's old spellings (Input::parse_stick)
 -        return v == "left" || v == "true" || v == "1" ? "LEFT STICK" : v == "right" ? "RIGHT STICK" : "NONE";
-+        return ds::sdl::tr_text(v == "left" || v == "true" || v == "1" ? "左摇杆" : v == "right" ? "右摇杆" : "无");
++        return ds::sdl::tr_text(v == "left" || v == "true" || v == "1" ? "LEFT STICK" : v == "right" ? "RIGHT STICK" : "NONE");
        return pad ? ds::sdl::Input::pad_label(v) : upper(v);
      }
  
@@ -314,99 +294,45 @@ index 61766f0..d09b392 100644
          out.value = hot_value(pad, a, slot);
        }
        // Display only: the file keeps SDL's lower-case names; pad values also
-@@ -2318,7 +2419,7 @@ sdl_ready:
-     bool user_in_firmware() const { return !nds.firmware_synthetic; }
- 
-     const char* user_settings_note() const override {
--      return user_in_firmware() ? "IN THE FIRMWARE" : nullptr;
-+      return user_in_firmware() ? "保存在固件中" : nullptr;
-     }
- 
-     static bool is_user_key(const char* key) { return std::strncmp(key, "user.", 5) == 0; }
-@@ -2403,51 +2504,59 @@ sdl_ready:
+@@ -2403,7 +2504,9 @@ sdl_ready:
        switch (s.depends) {
        case ds::sdl::Dep::None: return "";
        case ds::sdl::Dep::FrameskipMode:
 -        // Frameskip is forced to 0 for a session, so its mode is moot too.
--        if (net_live && *net_live) return "NOT DURING A NETWORK SESSION";
--        return cfg.num("emu.frameskip", 0) > 0 ? "" : "ONLY WITH FRAMESKIP ON";
 +        // Frameskip itself is forced to 0 for a session, so its mode is moot
 +        // there too -- and the config may still say otherwise, which is what
 +        // this test would read.
-+        if (net_live && *net_live) return "\u8054\u7f51\u4f1a\u8bdd\u4e2d\u4e0d\u53ef\u7528";
-+        return cfg.num("emu.frameskip", 0) > 0 ? "" : "\u4ec5\u5728\u5f00\u542f\u8df3\u5e27\u540e";
+         if (net_live && *net_live) return "NOT DURING A NETWORK SESSION";
+         return cfg.num("emu.frameskip", 0) > 0 ? "" : "ONLY WITH FRAMESKIP ON";
        case ds::sdl::Dep::PanelEffects:
--        if (display.rga_present()) return "THE RGA ALWAYS SCALES BILINEAR";
--        return panel_effects() ? "" : "THIS SCREEN SCALES IN HARDWARE";
-+        if (display.rga_present()) return "RGA \u59cb\u7ec8\u6309\u7ebf\u6027\u8fc7\u6ee4\u7f29\u653e";
-+        return panel_effects() ? "" : "\u6b64\u5c4f\u5e55\u7531\u786c\u4ef6\u7f29\u653e";
-       case ds::sdl::Dep::GridSeam:
--        if (display.rga_present()) return std::strcmp(s.key, "video.seam") == 0 ? "THE RGA DRAWS THE DARK GRID ONLY" : "";
--        if (!panel_effects()) return "THIS SCREEN SCALES IN HARDWARE";
--        return flag("video.linear", false) ? "BILINEAR IS ON" : "";
-+        if (display.rga_present()) return std::strcmp(s.key, "video.seam") == 0 ? "RGA \u53ea\u7ed8\u5236\u6697\u8272\u7f51\u683c" : "";
-+        if (!panel_effects()) return "\u6b64\u5c4f\u5e55\u7531\u786c\u4ef6\u7f29\u653e";
-+        return flag("video.linear", false) ? "\u7ebf\u6027\u8fc7\u6ee4\u5df2\u5f00\u542f" : "";
-       case ds::sdl::Dep::Chunky:
--        if (display.rga_present()) return "NOT ON THE RGA PRESENT";
--        return flag("video.linear", false) ? "BILINEAR IS ON" : "";
-+        if (display.rga_present()) return "RGA \u4e0d\u652f\u6301\u50cf\u7d20\u5757";
-+        return flag("video.linear", false) ? "\u7ebf\u6027\u8fc7\u6ee4\u5df2\u5f00\u542f" : "";
-       case ds::sdl::Dep::ChunkyCell:
--        if (display.rga_present()) return "NOT ON THE RGA PRESENT";
--        if (flag("video.linear", false)) return "BILINEAR IS ON";
--        return cfg.str("video.chunky", "false") == "false" ? "ONLY WITH CHUNKY ON" : "";
-+        if (display.rga_present()) return "RGA \u4e0d\u652f\u6301\u50cf\u7d20\u5757";
-+        if (flag("video.linear", false)) return "\u7ebf\u6027\u8fc7\u6ee4\u5df2\u5f00\u542f";
-+        return cfg.str("video.chunky", "false") == "false" ? "\u4ec5\u5728\u5f00\u542f\u50cf\u7d20\u5757\u540e" : "";
+@@ -2421,9 +2524,11 @@ sdl_ready:
+         if (flag("video.linear", false)) return "BILINEAR IS ON";
+         return cfg.str("video.chunky", "false") == "false" ? "ONLY WITH CHUNKY ON" : "";
        case ds::sdl::Dep::Windowed:
 -        // A tier that owns the panel is already filling it.
--        return display.scaling() && !display.window() ? "THIS SCREEN IS ALWAYS FULL" : "";
 +        // A tier that owns the panel is already filling it; there is no
 +        // window to make bigger.
-+        return display.scaling() && !display.window() ? "\u6b64\u5c4f\u5e55\u59cb\u7ec8\u5168\u5c4f" : "";
+         return display.scaling() && !display.window() ? "THIS SCREEN IS ALWAYS FULL" : "";
        case ds::sdl::Dep::OneWindow:
--        return vs.dual_window ? "NOT WITH TWO WINDOWS" : "";
 +        // Two windows show one screen each; there is nothing to lay out.
-+        return vs.dual_window ? "\u53cc\u7a97\u53e3\u4e0b\u4e0d\u53ef\u7528" : "";
+         return vs.dual_window ? "NOT WITH TWO WINDOWS" : "";
        case ds::sdl::Dep::Pip:
--        return pip ? "" : "PIP LAYOUT ONLY";
-+        return pip ? "" : "仅画中画布局";
-       case ds::sdl::Dep::PipTouchHold:
--        if (!pip) return "PIP LAYOUT ONLY";
--        return l.pip_alpha < 1.0 ? "" : "ONLY WHEN THE PIP FADES";
-+        if (!pip) return "仅画中画布局";
-+        return l.pip_alpha < 1.0 ? "" : "仅在小窗口会淡出时";
-       case ds::sdl::Dep::Dominant:
--        return dominant ? "" : "DOMINANT LAYOUTS ONLY";
-+        return dominant ? "" : "仅主次布局";
-       case ds::sdl::Dep::DominantThreshold:
--        if (!dominant) return "DOMINANT LAYOUTS ONLY";
--        return cfg.str("video.dominant_ratio", "auto") == "auto" ? "" : "ONLY WHEN THE RATIO IS AUTO";
-+        if (!dominant) return "仅主次布局";
-+        return cfg.str("video.dominant_ratio", "auto") == "auto" ? "" : "仅比例为自动时";
-       case ds::sdl::Dep::Net:
- #if DSPERATE_NET
-         return "";
- #else
--        return "THIS BUILD HAS NO NETWORKING";
-+        return "此构建未含网络功能";
+         return pip ? "" : "PIP LAYOUT ONLY";
+@@ -2442,12 +2547,16 @@ sdl_ready:
+         return "THIS BUILD HAS NO NETWORKING";
  #endif
        case ds::sdl::Dep::NetInternet:
 -        // Reads the config, not the session: the row is restart-only.
--        return cfg.str("net.mode", "off") == "internet" ? "" : "ONLY WITH NETWORK FEATURES ON INTERNET";
 +        // Reads the config, not the session: the row is restart-only, so what
 +        // it hangs off is the value being edited above it, not what this run
 +        // happens to be doing.
-+        return cfg.str("net.mode", "off") == "internet" ? "" : "仅网络功能为互联网时";
+         return cfg.str("net.mode", "off") == "internet" ? "" : "ONLY WITH NETWORK FEATURES ON INTERNET";
        case ds::sdl::Dep::NetSession:
--        return (net_live && *net_live) ? "NOT DURING A NETWORK SESSION" : "";
-+        return (net_live && *net_live) ? "联网会话中不可用" : "";
+         return (net_live && *net_live) ? "NOT DURING A NETWORK SESSION" : "";
        case ds::sdl::Dep::ShortcutsPath:
--        return shortcuts_dir(cfg).empty() ? "NEEDS PATHS.DSI_GAMES OR PATHS.GAMES" : "";
-+        return shortcuts_dir(cfg).empty() ? "\u9700\u8981 PATHS.DSI_GAMES \u6216 PATHS.GAMES" : "";
+         return shortcuts_dir(cfg).empty() ? "NEEDS PATHS.DSI_GAMES OR PATHS.GAMES" : "";
 +      case ds::sdl::Dep::Turbo:
-+        return flag("input.turbo", false) ? "" : "\u4ec5\u5728\u5f00\u542f\u8fde\u53d1\u540e";
++        return flag("input.turbo", false) ? "" : "ONLY WITH TURBO ON";
        }
        return "";
      }
@@ -461,7 +387,7 @@ index 61766f0..d09b392 100644
 +      // Resolved here, before the value is joined to a name or a hash and
 +      // before the page wraps it: tr_text matches a whole entry, and neither
 +      // a half-joined line nor a wrapped fragment is one.
-+      if (!c) return ds::sdl::tr_text("此构建不支持");
++      if (!c) return ds::sdl::tr_text("NOT AVAILABLE IN THIS BUILD");
 +      std::string base;
        switch (c->state()) {
        case ds::cheevos::State::Off:
@@ -471,18 +397,18 @@ index 61766f0..d09b392 100644
 -      case ds::cheevos::State::SignedIn:    return "SIGNED IN AS " + c->username();
 -      case ds::cheevos::State::LoadingGame: return "LOADING ACHIEVEMENTS...";
 -      case ds::cheevos::State::Playing:     return "SIGNED IN AS " + c->username();
-+        base = c->unavailable_reason().empty() ? ds::sdl::tr_text("已关闭") : c->unavailable_reason();
++        base = c->unavailable_reason().empty() ? ds::sdl::tr_text("TURNED OFF") : c->unavailable_reason();
 +        break;
-+      case ds::cheevos::State::SignedOut:   base = ds::sdl::tr_text("未登录"); break;
-+      case ds::cheevos::State::SigningIn:   base = ds::sdl::tr_text("正在登录..."); break;
-+      case ds::cheevos::State::SignedIn:    base = std::string(ds::sdl::tr_text("已登录为 ")) + c->username(); break;
-+      case ds::cheevos::State::LoadingGame: base = ds::sdl::tr_text("正在加载成就..."); break;
-+      case ds::cheevos::State::Playing:     base = std::string(ds::sdl::tr_text("已登录为 ")) + c->username(); break;
++      case ds::cheevos::State::SignedOut:   base = ds::sdl::tr_text("NOT SIGNED IN"); break;
++      case ds::cheevos::State::SigningIn:   base = ds::sdl::tr_text("SIGNING IN..."); break;
++      case ds::cheevos::State::SignedIn:    base = std::string(ds::sdl::tr_text("SIGNED IN AS ")) + c->username(); break;
++      case ds::cheevos::State::LoadingGame: base = ds::sdl::tr_text("LOADING ACHIEVEMENTS..."); break;
++      case ds::cheevos::State::Playing:     base = std::string(ds::sdl::tr_text("SIGNED IN AS ")) + c->username(); break;
 +      // The dump is recognised; the game simply has no set yet. Said plainly
 +      // so nobody goes looking for a list that does not exist.
        case ds::cheevos::State::EmptySet:
 -        return "NO ACHIEVEMENTS PUBLISHED FOR THIS GAME YET";
-+        base = ds::sdl::tr_text("此游戏尚未发布成就");
++        base = ds::sdl::tr_text("NO ACHIEVEMENTS PUBLISHED FOR THIS GAME YET");
 +        break;
        case ds::cheevos::State::NoSet:
 -        return "NO ACHIEVEMENTS FOR THIS ROM - HASH " + c->game_hash();
@@ -490,7 +416,7 @@ index 61766f0..d09b392 100644
 +        // so a ROM from your own cart often is not one it knows even when the
 +        // game has a set. With the hash the player can ask for theirs to be
 +        // added; without it this line is a dead end.
-+        base = std::string(ds::sdl::tr_text("此 ROM 没有成就 - HASH ")) + c->game_hash();
++        base = std::string(ds::sdl::tr_text("NO ACHIEVEMENTS FOR THIS ROM - HASH ")) + c->game_hash();
 +        break;
        }
 -      return "";
@@ -499,9 +425,9 @@ index 61766f0..d09b392 100644
 +      if (ds::cheevos::ra_account::isManaged() || ds::cheevos::ra_account::isSuppressed()) {
 +        const std::string why = ds::cheevos::ra_account::statusLine();
 +        if (signed_in()) {
-+          base += ds::sdl::tr_text(" - 由 Leaf 管理");
++          base += ds::sdl::tr_text(" - MANAGED BY LEAF");
 +        } else {
-+          base = ds::sdl::tr_text("由 Leaf 管理");
++          base = ds::sdl::tr_text("MANAGED BY LEAF");
 +          if (!why.empty()) base += " - " + why;
 +        }
 +      }
@@ -555,7 +481,7 @@ index 61766f0..d09b392 100644
        // Safe to hash the cart's source here: read_unpatched reads past the
        // secure-area rewrite Cart has already done by this point.
 diff --git a/src/frontend/sdl/menu.cpp b/src/frontend/sdl/menu.cpp
-index 3d872ff..392b62d 100644
+index 3d872ff..450d1a6 100644
 --- a/src/frontend/sdl/menu.cpp
 +++ b/src/frontend/sdl/menu.cpp
 @@ -1,6 +1,8 @@
@@ -576,34 +502,34 @@ index 3d872ff..392b62d 100644
 +// frame by Menu::draw. Starts in English; the first draw corrects it.
 +UiLang g_ui_lang = UiLang::En;
 +
-+// The translation table (zh <-> en). Generated by tools/gen_tr.py from the
-+// localization patch; both directions are searched so a string already written
-+// in either language resolves to the other.
++// The translation table: the English the sources are written in, keyed to the
++// Chinese the menu draws. Generated by tools/gen_tr.py, which also reports any
++// English string the table has no Chinese for.
 +#include "frontend/sdl/tr_data.inc"
 +
-+// Resolve `s` to the string for the current UI language. In English mode a
-+// Chinese literal becomes its English; in Chinese mode an English literal
-+// becomes its Chinese. Anything not in kTr is returned unchanged, so strings the
-+// translator never saw keep whatever language they were written in. Called from
-+// text_width and draw_text, so width and paint always agree on the text.
++// Resolve `s` to the string for the current UI language. The sources are
++// written in English, so English mode draws exactly what it is handed and never
++// consults the table: a string with no entry is not broken, it is English,
++// which is the language it was written in. Chinese mode looks the English up in
++// kTr and draws the Chinese paired with it; an English string with no entry
++// stays English, and that is the one way a row can read in the wrong language.
++// Called from text_width and draw_text, so width and paint always agree.
 +const char* tr_text(const char* s) {
 +  if (!s || !*s) return s;
-+  if (g_ui_lang == UiLang::En) {
-+    for (int i = 0; i < kTrN; ++i)
-+      if (std::strcmp(kTr[i].zh, s) == 0) return kTr[i].en;
-+  } else {
++  if (g_ui_lang == UiLang::Zh) {
 +    for (int i = 0; i < kTrN; ++i)
 +      if (std::strcmp(kTr[i].en, s) == 0) return kTr[i].zh;
 +  }
 +  return s;
 +}
 +
-+// Off unless the tests switch it on. A string the drawing is about to paint
-+// that the table cannot translate is a row the player reads in the wrong
-+// language, and with English set there is nothing on screen to tell that from
-+// a row that was drawn in English: a leak and a correct row look the same. The
-+// tests turn this on and walk every page, and what it counts is the only way
-+// the drawing can be held to the one rule the table cannot enforce on its own.
++// Off unless the tests switch it on. The sources are English, so what this
++// catches is the string that should not be there at all: a Chinese literal left
++// behind in a source, which with English set draws as Chinese. The other
++// direction -- an English row with no Chinese, so it stays English with Chinese
++// set -- cannot be told from a row that is meant to be English (a ROM title, a
++// number) once it is on screen; tools/gen_tr.py answers that one against the
++// sources instead, where it can be answered exactly.
 +bool g_strict_i18n = false;
 +int g_i18n_leaks = 0;
 +
@@ -684,33 +610,15 @@ index 3d872ff..392b62d 100644
    static constexpr char kLatin1[64 + 1] =
        "AAAAAAACEEEEIIII" "DNOOOOOxOUUUUYTs"
        "aaaaaaaceeeeiiii" "dnooooo/ouuuuyty";
-@@ -194,17 +276,17 @@ constexpr int kCheatRow = 3;   // hidden when no database matched this ROM
+@@ -194,7 +276,7 @@ constexpr int kCheatRow = 3;   // hidden when no database matched this ROM
  constexpr int kOptionsRow = 4; // hidden when the frontend gave no settings host
  constexpr int kCheevosRow = 5; // hidden unless RetroAchievements is built and on
  // The Options page's own entries, and which of them has no page yet.
 -constexpr int kOptionPages = 5, kDsOptionsRow = 4;
 +constexpr int kOptionPages = 7, kDsOptionsRow = 4;
  constexpr struct RootItem { const char* label; Menu::Result result; } kRoot[] = {
--  {"SAVE STATE", Menu::Result::Save},
--  {"LOAD STATE", Menu::Result::Load},
-+  {"保存存档", Menu::Result::Save},
-+  {"读取存档", Menu::Result::Load},
-   {nullptr,      Menu::Result::None},
--  {"CHEATS",     Menu::Result::None},
--  {"OPTIONS",    Menu::Result::None},
--  {"ACHIEVEMENTS", Menu::Result::None},
--  {"RESUME",     Menu::Result::Resume},
--  {"RESET",      Menu::Result::Reset},
--  {"QUIT",       Menu::Result::Quit},
-+  {"金手指",     Menu::Result::None},
-+  {"选项",    Menu::Result::None},
-+  {"成就", Menu::Result::None},
-+  {"继续游戏",     Menu::Result::Resume},
-+  {"重置",      Menu::Result::Reset},
-+  {"退出",       Menu::Result::Quit},
- };
- static_assert(static_cast<int>(std::size(kRoot)) == Menu::kRootRows, "kRootRows must match the table");
- static_assert(kRoot[kOptionsRow].result == Menu::Result::None, "kOptionsRow must name the options row");
+   {"SAVE STATE", Menu::Result::Save},
+   {"LOAD STATE", Menu::Result::Load},
 @@ -214,21 +296,41 @@ static_assert(kRoot[kCheevosRow].result == Menu::Result::None, "kCheevosRow must
  
  } // namespace
@@ -794,7 +702,7 @@ index 3d872ff..392b62d 100644
    while (!out.empty() && text_width(scale, (out + "...").c_str()) > width_px) pop_char(out);
    return out + "...";
  }
-@@ -647,13 +760,17 @@ void Menu::draw_cheats(const Canvas& d) const {
+@@ -647,7 +760,11 @@ void Menu::draw_cheats(const Canvas& d) const {
    size_t on = 0;
    if (codes_) for (const cheat::Code& c : *codes_) if (c.enabled) ++on;
    char title[32];
@@ -803,69 +711,41 @@ index 3d872ff..392b62d 100644
 +  // exactly, and a filled-in "3" is not the string the table holds, so a
 +  // heading formatted first and translated after comes out in the source
 +  // language -- Chinese -- with English set.
-+  std::snprintf(title, sizeof title, tr_text("金手指  已启用 %zu 条"), on);
++  std::snprintf(title, sizeof title, tr_text("CHEATS  %zu ON"), on);
    const ListFrame f = list_frame(d, title);
    const Metrics& m = f.m;
    visible_ = f.visible;
- 
-   if (lines_.empty()) {
--    draw_text(d, f.text_x + m.list_s * 2, f.py0 + m.list_rows_y + m.list_s * 4, m.list_s, kDim, "NO CHEATS FOR THIS GAME");
-+    draw_text(d, f.text_x + m.list_s * 2, f.py0 + m.list_rows_y + m.list_s * 4, m.list_s, kDim, "本游戏没有可用金手指");
-     return;
-   }
- 
-@@ -709,13 +826,15 @@ void Menu::draw_cheats(const Canvas& d) const {
+@@ -709,12 +826,14 @@ void Menu::draw_cheats(const Canvas& d) const {
  void Menu::draw_games(const Canvas& d) const {
    const int n = games_ ? static_cast<int>(games_->size()) : 0;
    char title[32];
 -  std::snprintf(title, sizeof title, "GAMES  %d", n);
-+  std::snprintf(title, sizeof title, tr_text("游戏  %d"), n);
++  std::snprintf(title, sizeof title, tr_text("GAMES  %d"), n);
    const ListFrame f = list_frame(d, title);
    const Metrics& m = f.m;
    visible_ = f.visible;
  
    if (n == 0) {
--    const char* why[] = {"NO GAMES FOUND -- SET", "[PATHS] GAMES IN THE", "CONFIG FILE"};
 +    // Say what is wrong rather than showing an empty box: an unset or empty
 +    // games directory is the likely reason, and it is fixable.
-+    const char* why[] = {"没有找到游戏 -- 请设置", "[路径] 游戏目录在", "配置文件"};
+     const char* why[] = {"NO GAMES FOUND -- SET", "[PATHS] GAMES IN THE", "CONFIG FILE"};
      for (int i = 0; i < 3; ++i)
        draw_text(d, f.text_x + m.list_s * 2, f.py0 + m.list_rows_y + m.list_s * 4 + i * m.list_row_h, m.list_s, kDim, why[i]);
-     return;
 @@ -752,11 +871,13 @@ void Menu::draw_games(const Canvas& d) const {
  
  // Two lines per achievement: name, then description or measured progress.
  void Menu::draw_cheevos(const Canvas& d) const {
--  char title[40] = "ACHIEVEMENTS";
 +  // The count goes in the title because it is short; the points total is on the
 +  // account page, where there is room for a line of its own.
-+  char title[40] = "成就";
+   char title[40] = "ACHIEVEMENTS";
    if (cheevos_ && cheevos_->row_count() > 0) {
      int unlocked = 0;
      for (int i = 0; i < cheevos_->row_count(); ++i) if (cheevos_->row(i).unlocked) ++unlocked;
 -    std::snprintf(title, sizeof title, "ACHIEVEMENTS  %d/%d", unlocked, cheevos_->row_count());
-+    std::snprintf(title, sizeof title, tr_text("成就  %d/%d"), unlocked, cheevos_->row_count());
++    std::snprintf(title, sizeof title, tr_text("ACHIEVEMENTS  %d/%d"), unlocked, cheevos_->row_count());
    }
    const ListFrame f = list_frame(d, title);
    const Metrics& m = f.m;
-@@ -767,7 +888,7 @@ void Menu::draw_cheevos(const Canvas& d) const {
-   const int n = cheevos_ ? cheevos_->row_count() : 0;
-   if (n == 0) {
-     draw_text(d, f.text_x + m.list_s * 2, f.py0 + m.list_rows_y + m.list_s * 4, m.list_s, kDim,
--              "NO ACHIEVEMENTS LOADED");
-+              "没有载入成就");
-     return;
-   }
- 
-@@ -789,7 +910,7 @@ void Menu::draw_cheevos(const Canvas& d) const {
-     if (r.points) head += "  " + std::to_string(r.points) + "P";
-     draw_text(d, f.text_x, y, m.list_s, ink, fit(head, m.list_s, f.avail).c_str());
- 
--    const std::string detail = r.unsupported ? "NOT SUPPORTED BY THIS EMULATOR YET" : r.detail;
-+    const std::string detail = r.unsupported ? "本模拟器暂不支持" : r.detail;
-     if (detail.empty()) continue;
-     const int dx = f.text_x + 4 * m.list_s, davail = f.avail - 4 * m.list_s;
-     const int dy = y + m.list_row_h;
 @@ -845,7 +966,10 @@ int account_rows(const CheevosHost* h, AccountRow out[kAccountRows]) {
    int n = 0;
    if (!h) return 0;
@@ -878,36 +758,22 @@ index 3d872ff..392b62d 100644
    if (h->has_set() && h->row_count() > 0) out[n++] = AccountRow::List;
    out[n++] = AccountRow::Toasts;
    out[n++] = AccountRow::Screenshot;
-@@ -857,13 +981,15 @@ int account_rows(const CheevosHost* h, AccountRow out[kAccountRows]) {
- struct AccountLabel { const char* text; bool toggle; CheevosHost::Option opt; };
- AccountLabel account_label(AccountRow r) {
-   switch (r) {
--  case AccountRow::SignOut:    return {"SIGN OUT", false, CheevosHost::Option::Toasts};
--  case AccountRow::SignIn:     return {"SIGN IN", false, CheevosHost::Option::Toasts};
--  case AccountRow::List:       return {"VIEW ACHIEVEMENTS", false, CheevosHost::Option::Toasts};
--  case AccountRow::Toasts:     return {"UNLOCK NOTICES", true, CheevosHost::Option::Toasts};
--  case AccountRow::Screenshot: return {"SCREENSHOT ON UNLOCK", true, CheevosHost::Option::Screenshot};
+@@ -862,7 +986,9 @@ AccountLabel account_label(AccountRow r) {
+   case AccountRow::List:       return {"VIEW ACHIEVEMENTS", false, CheevosHost::Option::Toasts};
+   case AccountRow::Toasts:     return {"UNLOCK NOTICES", true, CheevosHost::Option::Toasts};
+   case AccountRow::Screenshot: return {"SCREENSHOT ON UNLOCK", true, CheevosHost::Option::Screenshot};
 -  // Read only when a game loads, so it can't affect one already running.
--  case AccountRow::Encore:     return {"ENCORE (NEXT LAUNCH)", true, CheevosHost::Option::Encore};
-+  case AccountRow::SignOut:    return {"退出登录", false, CheevosHost::Option::Toasts};
-+  case AccountRow::SignIn:     return {"登录", false, CheevosHost::Option::Toasts};
-+  case AccountRow::List:       return {"查看成就", false, CheevosHost::Option::Toasts};
-+  case AccountRow::Toasts:     return {"解锁提示", true, CheevosHost::Option::Toasts};
-+  case AccountRow::Screenshot: return {"解锁时截图", true, CheevosHost::Option::Screenshot};
 +  // Encore is read when a game loads, so changing it here cannot affect the
 +  // game already running. Saying so in the label beats a player deciding it
 +  // is broken.
-+  case AccountRow::Encore:     return {"重玩模式(下次启动)", true, CheevosHost::Option::Encore};
+   case AccountRow::Encore:     return {"ENCORE (NEXT LAUNCH)", true, CheevosHost::Option::Encore};
    }
    return {"", false, CheevosHost::Option::Toasts};
- }
-@@ -908,8 +1034,8 @@ void Menu::draw_cheevos_account(const Canvas& d) const {
-       fill_rect(d, f.px0 + m.list_s * 2, y - m.list_s * 2, f.w - m.list_s * 10, m.list_row_h, kSel);
+@@ -909,7 +1035,7 @@ void Menu::draw_cheevos_account(const Canvas& d) const {
      draw_text(d, f.text_x, y, m.list_s, kInk, L.text);
      if (L.toggle) {
--      const char* state = cheevos_->option(L.opt) ? "ON" : "OFF";
+       const char* state = cheevos_->option(L.opt) ? "ON" : "OFF";
 -      // Right-aligned, in the scroll bar's margin.
-+      const char* state = cheevos_->option(L.opt) ? "开" : "关";
 +      // Right-aligned inside the same margin the scroll bar leaves.
        draw_text(d, f.px0 + f.w - m.pad - text_width(m.list_s, state), y, m.list_s,
                  cheevos_->option(L.opt) ? kInk : kDim, state);
@@ -957,7 +823,7 @@ index 3d872ff..392b62d 100644
  
  void Menu::draw_options(const Canvas& d) const {
 -  static constexpr const char* kItems[kOptionPages] = {"EMULATION", "VISUAL FX", "LAYOUT", "CONTROLS", "DS OPTIONS"};
-+  static constexpr const char* kItems[kOptionPages] = {"模拟器", "画面特效", "布局", "控制", "主机设置", "连发", "界面语言"};
++  static constexpr const char* kItems[kOptionPages] = {"EMULATION", "VISUAL FX", "LAYOUT", "CONTROLS", "DS OPTIONS", "TURBO", "UI LANGUAGE"};
    Metrics m = metrics(d);
    const int rows = kOptionPages + (host_ && host_->has_game() ? 1 : 0);
    const bool per_game = host_ && host_->save_per_game();
@@ -965,19 +831,18 @@ index 3d872ff..392b62d 100644
 -  std::snprintf(save_row, sizeof save_row, "SAVE TO < %s >", per_game ? "THIS GAME" : "GLOBAL");
 -  // Sized for the widest row the page can ever draw, not the current one, so
 -  // toggling save-to doesn't resize the panel.
--  static constexpr const char* kWidestSaveRow = "SAVE TO < THIS GAME >";
 +  // Both parts of the row are translated before the count goes in, the label
 +  // as well as the format, because neither "保存到 < %s >" nor "本游戏" is the
 +  // string the table holds once the value is filled in.
-+  std::snprintf(save_row, sizeof save_row, tr_text("保存到 < %s >"),
-+                tr_text(per_game ? "本游戏" : "全局"));
++  std::snprintf(save_row, sizeof save_row, tr_text("SAVE TO < %s >"),
++                tr_text(per_game ? "THIS GAME" : "GLOBAL"));
 +  // Sized for the widest row the page can ever draw, not the one it is drawing
 +  // now: the save-to switch is longer on one value than on the other, and
 +  // measuring the current text made the whole panel change width as it was
 +  // toggled. Both values are measured in the language that is set, since what
 +  // gets drawn is the translated row and a width taken from the Chinese would
 +  // leave the English one no room.
-+  static constexpr const char* kWidestSaveRow = "保存到 < 本游戏 >";
+   static constexpr const char* kWidestSaveRow = "SAVE TO < THIS GAME >";
    const auto widest_row = [&](const Metrics& mm) {
      int w = 0;
 -    for (int i = 0; i < kOptionPages; ++i) w = std::max(w, text_width(mm.s, kItems[i]));
@@ -993,7 +858,7 @@ index 3d872ff..392b62d 100644
 +        // one no room.
 +        char probe[2][32];
 +        std::snprintf(probe[0], sizeof probe[0], "< %s >", tr_text("English"));
-+        std::snprintf(probe[1], sizeof probe[1], "< %s >", tr_text("中文"));
++        std::snprintf(probe[1], sizeof probe[1], "< %s >", tr_text("CHINESE"));
 +        row += std::max(text_width(mm.s, probe[0]), text_width(mm.s, probe[1])) + 3 * mm.s;
 +      }
 +      w = std::max(w, row);
@@ -1001,15 +866,7 @@ index 3d872ff..392b62d 100644
      if (rows > kOptionPages) w = std::max(w, text_width(mm.s, kWidestSaveRow));
      return w;
    };
-@@ -1065,13 +1230,24 @@ void Menu::draw_options(const Canvas& d) const {
-   const int panel_h = panel_height(m, rows);
-   const int px0 = (d.w - panel_w) / 2, py0 = (d.h - panel_h) / 2;
-   panel(d, px0, py0, panel_w, panel_h);
--  draw_text(d, px0 + (panel_w - text_width(m.s, "OPTIONS")) / 2, py0 + m.title_y, m.s, kInk, "OPTIONS");
-+  draw_text(d, px0 + (panel_w - text_width(m.s, "选项")) / 2, py0 + m.title_y, m.s, kInk, "选项");
-   fill_rect(d, px0 + m.pad, py0 + m.rule_y, panel_w - 2 * m.pad, std::max(1, m.s / 2), kEdge);
-   for (int i = 0; i < rows; ++i) {
-     const int ry = py0 + m.rows_y + i * m.row_h;
+@@ -1072,6 +1237,17 @@ void Menu::draw_options(const Canvas& d) const {
      if (i == opt_row_) fill_rect(d, px0 + m.pad, ry - m.s, panel_w - 2 * m.pad, m.row_h, kSel);
      if (i < kOptionPages) {
        draw_text(d, px0 + m.pad + 3 * m.s, ry, m.s, kInk, kItems[i]);
@@ -1018,7 +875,7 @@ index 3d872ff..392b62d 100644
 +      // being drawn. Toggled in place by handle_options.
 +      if (i == kOptionPages - 1) {
 +        const bool zh = host_ && host_->get("ui.language") == "zh";
-+        const char* shown = tr_text(zh ? "中文" : "English");
++        const char* shown = tr_text(zh ? "CHINESE" : "English");
 +        char buf[32];
 +        std::snprintf(buf, sizeof buf, "< %s >", shown);
 +        const int vw = text_width(m.s, buf);
@@ -1032,7 +889,7 @@ index 3d872ff..392b62d 100644
  
  void Menu::draw_settings(const Canvas& d) const {
 -  static constexpr const char* kTitles[4] = {"EMULATION", "VISUAL FX", "LAYOUT", "DS OPTIONS"};
-+  static constexpr const char* kTitles[5] = {"模拟器", "画面特效", "布局", "主机设置", "连发"};
++  static constexpr const char* kTitles[5] = {"EMULATION", "VISUAL FX", "LAYOUT", "DS OPTIONS", "TURBO"};
    const ListFrame f = list_frame(d, kTitles[table_slot()]);
    const Metrics& m = f.m;
    visible_ = f.visible;
@@ -1058,13 +915,11 @@ index 3d872ff..392b62d 100644
    const char* line = why && *why ? why : cur.note;
    const u32 note_ink = why && *why ? kEdgeText : kDim;
 -  // What it takes to see the change; uses the second note line.
--  const char* when = (cur.flags & FlagRestart) ? "RESTART REQUIRED"
--                   : (cur.flags & FlagDeferred) ? "APPLIED WHEN THE MENU CLOSES" : nullptr;
 +  // What it will take to see the change, when that is not "nothing". It takes
 +  // the second note line, so the note itself wraps into one line when there is
 +  // one and two when the row is free.
-+  const char* when = (cur.flags & FlagRestart) ? "需要重启"
-+                   : (cur.flags & FlagDeferred) ? "关闭菜单后生效" : nullptr;
+   const char* when = (cur.flags & FlagRestart) ? "RESTART REQUIRED"
+                    : (cur.flags & FlagDeferred) ? "APPLIED WHEN THE MENU CLOSES" : nullptr;
    if (when && !host_->enabled(cur)) when = nullptr;
    // DS Options with a firmware dump: changes go beside the dump, not the config.
    std::string when_text;
@@ -1100,23 +955,21 @@ index 3d872ff..392b62d 100644
  void Menu::draw_controls(const Canvas& d) const {
    char title[32];
 -  std::snprintf(title, sizeof title, "CONTROLS  %s", bind_pad_ ? "PAD" : "KEYBOARD");
-+  std::snprintf(title, sizeof title, tr_text("控制  %s"),
-+                tr_text(bind_pad_ ? "手柄" : "键盘"));
++  std::snprintf(title, sizeof title, tr_text("CONTROLS  %s"),
++                tr_text(bind_pad_ ? "PAD" : "KEYBOARD"));
    const ListFrame f = list_frame(d, title);
    const Metrics& m = f.m;
    visible_ = f.visible;
-@@ -1250,8 +1445,9 @@ void Menu::draw_controls(const Canvas& d) const {
+@@ -1250,7 +1445,8 @@ void Menu::draw_controls(const Canvas& d) const {
      const bool is_sel = top + i == sel;
      if (is_sel) fill_rect(d, f.px0 + m.list_s * 4, ry - m.list_s * 2, f.w - m.list_s * 14, m.list_row_h, kSel);
      draw_text(d, f.text_x, ry, m.list_s, kInk, fit(b.label, m.list_s, f.avail - value_w).c_str());
 -    // The row being rebound says so where its value was.
--    const std::string v = is_sel && listening ? "PRESS ANY..." : (b.value.empty() || b.value == "none" ? "--" : b.value);
 +    // The row being rebound says so where its value was, so it is obvious
 +    // which one the next press will land on.
-+    const std::string v = is_sel && listening ? "请按下按键..." : (b.value.empty() || b.value == "none" ? "--" : b.value);
+     const std::string v = is_sel && listening ? "PRESS ANY..." : (b.value.empty() || b.value == "none" ? "--" : b.value);
      const u32 ink = is_sel && listening ? kEdgeText : (v == "--" ? kDim : kInk);
      draw_text(d, f.text_x + f.avail - std::min(value_w, text_width(m.list_s, v.c_str())),
-               ry, m.list_s, ink, fit(v, m.list_s, value_w).c_str());
 @@ -1260,14 +1456,19 @@ void Menu::draw_controls(const Canvas& d) const {
  
    const int foot_y = f.py0 + m.list_rows_y + visible * m.list_row_h + m.list_s;
@@ -1129,52 +982,25 @@ index 3d872ff..392b62d 100644
 +  // may print something else entirely on the same four buttons. Keyboard has
 +  // no places to point at, so its column names the keys instead.
    const bool pad = host_->has_pad();
--  const char* help1 = listening ? "PRESS THE CONTROL TO BIND,"
--                    : reset_armed_ ? (pad ? "\x04 AGAIN: RESET ALL" : "X AGAIN: RESET ALL")
--                    : pad ? "\x02 BIND   \x03 CLEAR   \x04 DEFAULTS" : "A BIND   Y CLEAR   X DEFAULTS";
--  const char* help2 = listening ? "OR ESCAPE TO CANCEL"
--                    : host_->has_pad() ? "L/R KEYBOARD OR PAD" : "L/R SWAP COLUMN";
-+  const char* help1 = listening ? "按下要绑定的按键，"
-+                    : reset_armed_ ? (pad ? "\x04 再按一次：全部重置" : "X 再按一次：全部重置")
-+                    : pad ? "\x02 绑定   \x03 清除   \x04 恢复默认" : "A 绑定   Y 清除   X 恢复默认";
-+  const char* help2 = listening ? "或按 ESC 取消"
-+                    : host_->has_pad() ? "L/R 切换键盘或手柄" : "L/R 切换列";
+   const char* help1 = listening ? "PRESS THE CONTROL TO BIND,"
+                     : reset_armed_ ? (pad ? "\x04 AGAIN: RESET ALL" : "X AGAIN: RESET ALL")
+                     : pad ? "\x02 BIND   \x03 CLEAR   \x04 DEFAULTS" : "A BIND   Y CLEAR   X DEFAULTS";
+   const char* help2 = listening ? "OR ESCAPE TO CANCEL"
+                     : host_->has_pad() ? "L/R KEYBOARD OR PAD" : "L/R SWAP COLUMN";
 +  // Armed reads as a warning: DEFAULTS wipes the whole column, and the prompt
 +  // the player is looking at is the only thing saying the first press landed.
    draw_text(d, f.text_x, foot_y + 2 * m.list_s, m.list_s, reset_armed_ && !listening ? kDanger : kDim, fit(help1, m.list_s, f.avail).c_str());
    draw_text(d, f.text_x, foot_y + 2 * m.list_s + m.list_row_h, m.list_s, kDim, fit(help2, m.list_s, f.avail).c_str());
    const std::vector<std::string> clash = host_->collisions();
-@@ -1284,7 +1485,7 @@ const char* const kCharTables[] = {
-   " abcdefghijklmnopqrstuvwxyz",
-   " 0123456789.,!?'-&+()/:@",
- };
--const char* const kCharTableNames[] = {"CAPITALS", "LOWERCASE", "NUM+SYM"};
-+const char* const kCharTableNames[] = {"大写字母", "小写字母", "数字与符号"};
- constexpr int kCharTableCount = 3;
- // Widest a field is laid out before it wraps (two lines, like the console's own screen).
- constexpr int kEditCols = 13;
-@@ -1317,7 +1518,7 @@ void Menu::open_text_edit() {
- void Menu::open_credential_edit(EditDest dest) {
-   edit_dest_ = dest;
-   edit_key_.clear();
--  edit_label_ = dest == EditDest::CheevosUser ? "RA USERNAME" : "RA PASSWORD";
-+  edit_label_ = dest == EditDest::CheevosUser ? "RA 用户名" : "RA 密码";
-   edit_max_ = dest == EditDest::CheevosUser ? 20 : 32;
-   edit_buf_ = " ";
-   edit_pos_ = 0;
-@@ -1401,8 +1602,10 @@ Menu::Result Menu::handle_text_edit(u32 presses) {
+@@ -1401,6 +1602,8 @@ Menu::Result Menu::handle_text_edit(u32 presses) {
  }
  
  void Menu::draw_text_edit(const Canvas& d) const {
--  static constexpr const char* kHelp1 = "UP/DOWN LETTER   L/R TABLE";
--  static constexpr const char* kHelp2 = "\x02 DONE   \x01 CANCEL";
 +  // Two lines, so neither is cut off on a small panel: what moves about, then
 +  // what finishes.
-+  static constexpr const char* kHelp1 = "上下 选字符   L/R 换字表";
-+  static constexpr const char* kHelp2 = "\x02 完成   \x01 取消";
+   static constexpr const char* kHelp1 = "UP/DOWN LETTER   L/R TABLE";
+   static constexpr const char* kHelp2 = "\x02 DONE   \x01 CANCEL";
    Metrics m = metrics(d);
-   // Wide enough for the field or the help line, whichever is wider; scale
-   // steps down rather than clip. A long field wraps over two lines, as the
 @@ -1444,7 +1647,24 @@ void Menu::draw_text_edit(const Canvas& d) const {
    draw_text(d, fx, below + 2 * m.list_row_h, m.list_s, kDim, fit(kHelp2, m.list_s, avail).c_str());
  }
@@ -1186,7 +1012,7 @@ index 3d872ff..392b62d 100644
 +// to end in half of 绝. The buffer is named so the longest form can be held
 +// against it here rather than in a comment that no compiler reads.
 +constexpr int kRowBuf = 40;
-+static_assert(kRowBuf > sizeof("存档槽 < 0 > 已拒绝"), "the slot row's longest form has to fit whole");
++static_assert(kRowBuf > sizeof("SLOT < 0 > REJECTED"), "the slot row's longest form has to fit whole");
 +
  void Menu::draw(const Canvas& d) const {
 +  // Mirror the UI language from config every frame so the whole menu -- labels,
@@ -1226,9 +1052,8 @@ index 3d872ff..392b62d 100644
      for (int i = 0; i < kRootRows; ++i) {
        if (!root_visible(i)) continue;
 -      // The slot row formats its own text; "SLOT < 0 >" is its widest form.
--      const char* label = kRoot[i].label ? kRoot[i].label : (slot_notice_.empty() ? "SLOT < 0 >" : "SLOT < 0 > REJECTED");
 +      // The slot row formats its own text; "存档槽 < 0 >" is its widest form.
-+      const char* label = kRoot[i].label ? kRoot[i].label : (slot_notice_.empty() ? "存档槽 < 0 >" : "存档槽 < 0 > 已拒绝");
+       const char* label = kRoot[i].label ? kRoot[i].label : (slot_notice_.empty() ? "SLOT < 0 >" : "SLOT < 0 > REJECTED");
 +      // The 3*s the label is indented by, on both sides, plus the panel's own
 +      // padding: without the second one the text sits hard against the edge.
        w = std::max(w, text_width(mm.s, label) + 6 * mm.s + 2 * mm.pad);
@@ -1239,17 +1064,15 @@ index 3d872ff..392b62d 100644
    panel(d, px0, py0, panel_w, panel_h);
  
 -  // Not PAUSED during a network session: the game behind this page keeps running.
--  const char* title = slots ? (slot_delete_ ? "DELETE STATE" : "STATE SLOT") : (net_session_ ? "MENU" : "PAUSED");
 +  // Not PAUSED during a network session: the game behind this page is still
 +  // running, because a console that stops for the length of a menu visit has
 +  // left the session.
-+  const char* title = slots ? (slot_delete_ ? "删除状态" : "存档状态") : (net_session_ ? "MENU" : "PAUSED");
+   const char* title = slots ? (slot_delete_ ? "DELETE STATE" : "STATE SLOT") : (net_session_ ? "MENU" : "PAUSED");
    draw_text(d, px0 + (panel_w - text_width(scale, title)) / 2, py0 + title_y, scale, slots && slot_delete_ ? kDanger : kInk, title);
    if (slots) {
--    const char* help = slot_delete_ ? "\x03 DONE" : "\x03 DELETE";
--    draw_text(d, px0 + (panel_w - text_width(scale, help)) / 2, py0 + rows_y + (kSlotRows + 1) * row_h, scale, kDim, help);
 +    // The pip is the DS's Y, on the left of the diamond, as on the Controls page.
-+    const char* help = slot_delete_ ? "\x03 完成" : "\x03 删除";
+     const char* help = slot_delete_ ? "\x03 DONE" : "\x03 DELETE";
+-    draw_text(d, px0 + (panel_w - text_width(scale, help)) / 2, py0 + rows_y + (kSlotRows + 1) * row_h, scale, kDim, help);
 +    draw_text(d, px0 + (panel_w - text_width(scale, help)) / 2, py0 + rows_y + (auto_row ? kSlotRows + 1 : kSlotRows) * row_h, scale, kDim, help);
    }
    fill_rect(d, px0 + m.pad, py0 + rule_y, panel_w - 2 * m.pad, std::max(1, m.s / 2), kEdge);
@@ -1272,12 +1095,12 @@ index 3d872ff..392b62d 100644
 -    if (slots && i == kAutoSlot) std::snprintf(buf, sizeof buf, "AUTO %s", tag);
 +    // The tag is translated where it is taken, and the format joins it, so the
 +    // row reaches the table before any value goes into it.
-+    const char* tag = tr_text(doomed ? "确认？" : used_[i] ? "USED" : "EMPTY");
-+    if (slots && i == kAutoSlot) std::snprintf(buf, sizeof buf, tr_text("自动 %s"), tag);
++    const char* tag = tr_text(doomed ? "SURE?" : used_[i] ? "USED" : "EMPTY");
++    if (slots && i == kAutoSlot) std::snprintf(buf, sizeof buf, tr_text("AUTO %s"), tag);
      else if (slots) std::snprintf(buf, sizeof buf, "%d %s", i, tag);
 -    else if (item == kSlotRow) std::snprintf(buf, sizeof buf, "SLOT < %d >%s%s", slot_,
 -                                             slot_notice_.empty() ? "" : " ", slot_notice_.c_str());
-+    else if (item == kSlotRow) std::snprintf(buf, sizeof buf, tr_text("存档槽 < %d >%s%s"), slot_,
++    else if (item == kSlotRow) std::snprintf(buf, sizeof buf, tr_text("SLOT < %d >%s%s"), slot_,
 +                                             slot_notice_.empty() ? "" : " ", tr_text(slot_notice_.c_str()));
      else label = kRoot[item].label;
      // An empty slot reads dimmer: the menu says what is there before the player commits.
@@ -1328,80 +1151,57 @@ index 756f8f4..c11e2f9 100644
    void toggle_cheat();
  };
 diff --git a/src/frontend/sdl/settings.cpp b/src/frontend/sdl/settings.cpp
-index 8659268..3f601cf 100644
+index 8659268..526d846 100644
 --- a/src/frontend/sdl/settings.cpp
 +++ b/src/frontend/sdl/settings.cpp
-@@ -13,38 +13,63 @@ namespace {
+@@ -15,33 +15,58 @@ using T = Setting::Type;
  
- using T = Setting::Type;
- 
--const Choice kOnOff[]   = {{"false", "OFF"}, {"true", "ON"}};
--const Choice kSkipMode[] = {{"adaptive", "ADAPTIVE"}, {"fixed", "FIXED"}};
+ const Choice kOnOff[]   = {{"false", "OFF"}, {"true", "ON"}};
+ const Choice kSkipMode[] = {{"adaptive", "ADAPTIVE"}, {"fixed", "FIXED"}};
 -// Panel-typical rates, plus the console's own (auto, the default) and no limit.
--const Choice kLimiter[] = {{"auto", "CONSOLE (59.8)"}, {"30", "30"}, {"60", "60"}, {"120", "120"},
--                           {"144", "144"}, {"240", "240"}, {"off", "UNLIMITED"}};
--const Choice kIntScale[] = {{"off", "OFF"}, {"under", "UNDER"}, {"over", "OVER"}};
--const Choice kSeam[]     = {{"dark", "DARK"}, {"blend", "BLEND"}, {"blend_linear", "BLEND LINEAR"}};
--const Choice kChunky[]   = {{"false", "OFF"}, {"mean", "DEFAULT"}, {"extreme", "ADAPTIVE"},
--                            {"mode", "COMMON"}, {"tl", "FIRST"}, {"min", "DARKEST"}, {"max", "LIGHTEST"}};
--const Choice kScreen[]   = {{"top", "TOP"}, {"bottom", "BOTTOM"}};
--// GBATEK's order, matching the firmware.
--const Choice kColour[]   = {{"0", "GREY"}, {"1", "BROWN"}, {"2", "RED"}, {"3", "PINK"},
--                            {"4", "ORANGE"}, {"5", "YELLOW"}, {"6", "LIME"}, {"7", "GREEN"},
--                            {"8", "DARK GREEN"}, {"9", "TURQUOISE"}, {"10", "BLUE"}, {"11", "DARK BLUE"},
--                            {"12", "PURPLE"}, {"13", "VIOLET"}, {"14", "MAGENTA"}, {"15", "DARK PINK"}};
--const Choice kMonth[]    = {{"1", "JANUARY"}, {"2", "FEBRUARY"}, {"3", "MARCH"}, {"4", "APRIL"},
--                            {"5", "MAY"}, {"6", "JUNE"}, {"7", "JULY"}, {"8", "AUGUST"},
--                            {"9", "SEPTEMBER"}, {"10", "OCTOBER"}, {"11", "NOVEMBER"}, {"12", "DECEMBER"}};
--// AUTO is --netplay (join if heard, else host); HOST/GUEST fix the role up
--// front. Join address stays a command-line flag; discovery finds hosts itself.
--const Choice kNetMode[]  = {{"off", "OFF"}, {"auto", "AUTO"}, {"host", "HOST"}, {"guest", "GUEST"},
--                            {"internet", "INTERNET"}};
--// A plain-address DNS form also exists in the config but has nowhere in a
--// pick row. WIIMMFI is default since Nintendo WFC is gone; HOST resolves to
--// nothing unless pointed at a private server.
--const Choice kWifiDns[]  = {{"wiimmfi", "WIIMMFI"}, {"host", "HOST"}};
--const Choice kLanguage[] = {{"0", "JAPANESE"}, {"1", "ENGLISH"}, {"2", "FRENCH"},
--                            {"3", "GERMAN"}, {"4", "ITALIAN"}, {"5", "SPANISH"}};
-+const Choice kOnOff[]   = {{"false", "关"}, {"true", "开"}};
-+const Choice kSkipMode[] = {{"adaptive", "自适应"}, {"fixed", "固定"}};
 +// The rates a panel comes in, plus the console's own and no limiter at all.
 +// "auto" is the default and the only one that plays a game at the speed it was
 +// written for; 60 is 0.29 % fast, which is what a player means by "60 fps"
 +// and what lines up with a 60 Hz panel. Both ends are named in the row's own
 +// language rather than left in English: the rest of the row is in the language
 +// that is set, and a value in another one is the odd thing out on it.
-+const Choice kLimiter[] = {{"auto", "实机 (59.8)"}, {"30", "30"}, {"60", "60"}, {"120", "120"},
-+                           {"144", "144"}, {"240", "240"}, {"off", "无限制"}};
+ const Choice kLimiter[] = {{"auto", "CONSOLE (59.8)"}, {"30", "30"}, {"60", "60"}, {"120", "120"},
+                            {"144", "144"}, {"240", "240"}, {"off", "UNLIMITED"}};
 +// Named for what the player sees, not for how the scale gets there: "under"
 +// leaves black bars around the picture and "over" cuts off its edges, and
 +// those are the two things a row has to tell them apart.
-+const Choice kIntScale[] = {{"off", "关"}, {"under", "留黑边"}, {"over", "裁切"}};
-+const Choice kSeam[]     = {{"dark", "暗色"}, {"blend", "混合"}, {"blend_linear", "线性混合"}};
+ const Choice kIntScale[] = {{"off", "OFF"}, {"under", "UNDER"}, {"over", "OVER"}};
+ const Choice kSeam[]     = {{"dark", "DARK"}, {"blend", "BLEND"}, {"blend_linear", "BLEND LINEAR"}};
 +// The file's own words on the left. "mean" is the ordinary cell and reads as
 +// DEFAULT; the rest are named for what they do rather than how they do it.
-+const Choice kChunky[]   = {{"false", "关"}, {"mean", "默认"}, {"extreme", "自适应"},
-+                            {"mode", "众数"}, {"tl", "首个"}, {"min", "最暗"}, {"max", "最亮"}};
-+const Choice kScreen[]   = {{"top", "上屏"}, {"bottom", "下屏"}};
+ const Choice kChunky[]   = {{"false", "OFF"}, {"mean", "DEFAULT"}, {"extreme", "ADAPTIVE"},
+                             {"mode", "COMMON"}, {"tl", "FIRST"}, {"min", "DARKEST"}, {"max", "LIGHTEST"}};
+ const Choice kScreen[]   = {{"top", "TOP"}, {"bottom", "BOTTOM"}};
+-// GBATEK's order, matching the firmware.
 +// GBATEK's order, which is what the firmware stores. Named the way the rest of
 +// the row is: these are the colours the firmware offers and a player picks one
 +// by its name, so it is the name that has to be in the language that is set.
-+const Choice kColour[]   = {{"0", "灰"}, {"1", "棕"}, {"2", "红"}, {"3", "粉"},
-+                            {"4", "橙"}, {"5", "黄"}, {"6", "青柠"}, {"7", "绿"},
-+                            {"8", "深绿"}, {"9", "青绿"}, {"10", "蓝"}, {"11", "深蓝"},
-+                            {"12", "紫"}, {"13", "紫罗兰"}, {"14", "洋红"}, {"15", "暗粉"}};
+ const Choice kColour[]   = {{"0", "GREY"}, {"1", "BROWN"}, {"2", "RED"}, {"3", "PINK"},
+                             {"4", "ORANGE"}, {"5", "YELLOW"}, {"6", "LIME"}, {"7", "GREEN"},
+                             {"8", "DARK GREEN"}, {"9", "TURQUOISE"}, {"10", "BLUE"}, {"11", "DARK BLUE"},
+                             {"12", "PURPLE"}, {"13", "VIOLET"}, {"14", "MAGENTA"}, {"15", "DARK PINK"}};
 +// The firmware stores the month as a number; the menu names it, because
 +// "BIRTHDAY MONTH 11" takes a moment to read and "十一月" does not.
-+const Choice kMonth[]    = {{"1", "一月"}, {"2", "二月"}, {"3", "三月"}, {"4", "四月"},
-+                            {"5", "五月"}, {"6", "六月"}, {"7", "七月"}, {"8", "八月"},
-+                            {"9", "九月"}, {"10", "十月"}, {"11", "十一月"}, {"12", "十二月"}};
+ const Choice kMonth[]    = {{"1", "JANUARY"}, {"2", "FEBRUARY"}, {"3", "MARCH"}, {"4", "APRIL"},
+                             {"5", "MAY"}, {"6", "JUNE"}, {"7", "JULY"}, {"8", "AUGUST"},
+                             {"9", "SEPTEMBER"}, {"10", "OCTOBER"}, {"11", "NOVEMBER"}, {"12", "DECEMBER"}};
+-// AUTO is --netplay (join if heard, else host); HOST/GUEST fix the role up
+-// front. Join address stays a command-line flag; discovery finds hosts itself.
 +// Local wireless, as one row. AUTO is --netplay (join a session heard on the
 +// LAN, else host one); HOST and GUEST are the same scan with the decision
 +// already made, so a console meant to be the second one cannot quietly become
 +// the session everyone joins. The address form stays a command-line flag:
 +// a pick row has nowhere to put one, and discovery finds hosts on its own.
-+const Choice kNetMode[]  = {{"off", "关"}, {"auto", "自动"}, {"host", "主机"}, {"guest", "客机"},
-+                            {"internet", "互联网"}};
+ const Choice kNetMode[]  = {{"off", "OFF"}, {"auto", "AUTO"}, {"host", "HOST"}, {"guest", "GUEST"},
+                             {"internet", "INTERNET"}};
+-// A plain-address DNS form also exists in the config but has nowhere in a
+-// pick row. WIIMMFI is default since Nintendo WFC is gone; HOST resolves to
+-// nothing unless pointed at a private server.
 +// Where the game's DNS queries go once it is on the internet. Two values
 +// here; the config takes a third form, a plain address, which a pick row has
 +// nowhere to put (the same reason the LAN join address stayed a flag).
@@ -1410,257 +1210,110 @@ index 8659268..3f601cf 100644
 +// Nintendo WFC was switched off in 2014, so HOST -- the host's own resolver,
 +// which is what a real DS would have used -- resolves the game's servers to
 +// nothing. HOST is there for a private server or a local test.
-+const Choice kWifiDns[]  = {{"wiimmfi", "WIIMMFI"}, {"host", "主机"}};
-+const Choice kLanguage[] = {{"0", "日语"}, {"1", "英语"}, {"2", "法语"},
-+                            {"3", "德语"}, {"4", "意大利语"}, {"5", "西班牙语"}};
+ const Choice kWifiDns[]  = {{"wiimmfi", "WIIMMFI"}, {"host", "HOST"}};
+ const Choice kLanguage[] = {{"0", "JAPANESE"}, {"1", "ENGLISH"}, {"2", "FRENCH"},
+                             {"3", "GERMAN"}, {"4", "ITALIAN"}, {"5", "SPANISH"}};
 +// A checkbox: the same two values as kOnOff, drawn as a box. Rows that are
 +// members of a set rather than switches read better that way.
  const Choice kCheck[]    = {{"false", "[ ]"}, {"true", "[X]"}};
--const Choice kLayout[]   = {{"vertical", "VERTICAL"}, {"horizontal", "HORIZONTAL"}, {"single", "SINGLE"},
--                            {"pip", "PIP"}, {"dominant_v", "DOMINANT V"}, {"dominant_h", "DOMINANT H"}};
--const Choice kCorner[]   = {{"tl", "TOP LEFT"}, {"tr", "TOP RIGHT"}, {"bl", "BOTTOM LEFT"}, {"br", "BOTTOM RIGHT"}};
 +// Display::mode_name's words, in Display::Mode order.
-+const Choice kLayout[]   = {{"vertical", "纵向"}, {"horizontal", "横向"}, {"single", "单屏"},
-+                            {"pip", "画中画"}, {"dominant_v", "主次纵向"}, {"dominant_h", "主次横向"}};
-+const Choice kCorner[]   = {{"tl", "左上角"}, {"tr", "右上角"}, {"bl", "左下角"}, {"br", "右下角"}};
- 
- constexpr Setting boolean(const char* k, const char* l, const char* def, u8 f, Dep d, const char* n) {
-   return Setting{k, l, T::Bool, kOnOff, 2, 0, 0, 0, nullptr, nullptr, nullptr, def, f, d, n};
-@@ -71,113 +96,183 @@ constexpr Setting end() { return Setting{nullptr, nullptr, T::Bool, nullptr, 0,
- } // namespace
- 
- const Setting kEmuSettings[] = {
--  number("emu.frameskip", "FRAMESKIP", 0, 3, 1, "0", FlagLive, Dep::NetSession,
--         "DRAW FEWER FRAMES. THE GAME STILL RUNS IN FULL"),
--  pick("emu.frameskip_mode", "FRAMESKIP MODE", kSkipMode, 2, "adaptive", FlagLive, Dep::FrameskipMode,
--       "ADAPTIVE SKIPS ONLY WHILE BEHIND REAL TIME"),
--  pick("emu.limiter", "FRAME LIMITER", kLimiter, 7, "auto", FlagLive, Dep::NetSession,
--       "THE RATE THE GAME IS HELD TO. CONSOLE IS THE ONE THE GAME WAS WRITTEN FOR"),
--  // Whole percent in the file ("100"), so not a Percent row (0..1 fraction).
--  number("emu.speed", "GAME SPEED", 25, 400, 5, "100", FlagLive, Dep::NetSession,
--         "HOW FAST THE GAME RUNS AGAINST THE LIMITER", nullptr, nullptr, "%"),
--  // Multiple of real time (a floor), not of the limiter, so it never slows
--  // the game below this even on a fast limiter.
--  number("emu.ff_speed", "FAST FORWARD SPEED", 2, 16, 1, "0", FlagLive, Dep::NetSession,
--         "AT LEAST THIS MANY TIMES REAL TIME WHILE FAST FORWARD IS HELD", "0", "UNLIMITED", "X"),
--  number("emu.ff_skip", "FAST FORWARD SKIP", 0, 9, 1, "3", FlagLive, Dep::NetSession,
--         "WHILE FAST FORWARDING, SHOW ONE FRAME IN THIS MANY PLUS ONE"),
--  // AUTO raises the buffer only when the machine keeps up yet still ran dry
--  // (a hitch, not a machine too slow to keep up at all).
--  number("audio.buffer_size", "AUDIO BUFFER", 20, 200, 10, "auto", FlagLive, Dep::None,
--         "SOUND HELD AHEAD. LOWER IS LESS DELAY, LESS SLACK BEFORE A LATE FRAME IS HEARD",
--         "auto", "AUTO", " MS"),
--  boolean("emu.autosave", "AUTOSAVE ON QUIT", "false", FlagLive, Dep::None,
--          "SAVE A STATE WHEN THE EMULATOR EXITS, TO RESUME FROM"),
--  boolean("emu.autoload", "AUTOLOAD ON START", "false", FlagRestart, Dep::None,
--          "WHEN A GAME STARTS, RESUME FROM ITS AUTOSAVED STATE IF THERE IS ONE"),
--  boolean("emu.dsi_hide_installed", "HIDE NAND DSIWARE", "false", FlagRestart, Dep::None,
--          "DSI MENU: HIDE THE NAND DUMP'S OWN TITLES. THE DUMP IS NOT CHANGED"),
--  boolean("emu.dsi_nand_shortcuts", "DSI NAND LINKS", "false", FlagLive, Dep::ShortcutsPath,
--          "GAME LIST ENTRIES THAT START THE NAND'S DSIWARE WITHOUT THE DSI MENU"),
--  pick("net.mode", "NETWORK FEATURES", kNetMode, 5, "off", FlagLive, Dep::Net,
--       "LOCAL WIRELESS, OR INTERNET. AUTO JOINS A SESSION, ELSE HOSTS ONE"),
-+  number("emu.frameskip", "跳帧", 0, 3, 1, "0", FlagLive, Dep::NetSession,
-+         "减少绘制的帧数，游戏仍全速运行"),
-+  pick("emu.frameskip_mode", "跳帧模式", kSkipMode, 2, "adaptive", FlagLive, Dep::FrameskipMode,
-+       "自适应只在落后实机速度时才跳帧"),
+ const Choice kLayout[]   = {{"vertical", "VERTICAL"}, {"horizontal", "HORIZONTAL"}, {"single", "SINGLE"},
+                             {"pip", "PIP"}, {"dominant_v", "DOMINANT V"}, {"dominant_h", "DOMINANT H"}};
+ const Choice kCorner[]   = {{"tl", "TOP LEFT"}, {"tr", "TOP RIGHT"}, {"bl", "BOTTOM LEFT"}, {"br", "BOTTOM RIGHT"}};
+@@ -75,19 +100,34 @@ const Setting kEmuSettings[] = {
+          "DRAW FEWER FRAMES. THE GAME STILL RUNS IN FULL"),
+   pick("emu.frameskip_mode", "FRAMESKIP MODE", kSkipMode, 2, "adaptive", FlagLive, Dep::FrameskipMode,
+        "ADAPTIVE SKIPS ONLY WHILE BEHIND REAL TIME"),
 +  // emu.cpu_tuning and emu.timing_oc are gone in v3.0.0: the CPU TUNING row
 +  // and its kCpuOc table were dropped there, and the menu no longer steps it.
 +  // emu.fast_load went the same way -- nothing reads the key any more, and a
 +  // switch that does nothing but be switchable is worse than no switch. The
 +  // three-way merge kept all three, because the v2.1.1 side had them and the
 +  // merge took its CLI whitelist as a union.
-+  pick("emu.limiter", "帧率上限", kLimiter, 7, "auto", FlagLive, Dep::NetSession,
-+       "游戏被限制到的帧率，实机即原目标帧率"),
+   pick("emu.limiter", "FRAME LIMITER", kLimiter, 7, "auto", FlagLive, Dep::NetSession,
+        "THE RATE THE GAME IS HELD TO. CONSOLE IS THE ONE THE GAME WAS WRITTEN FOR"),
+-  // Whole percent in the file ("100"), so not a Percent row (0..1 fraction).
 +  // A whole percent in the file ("100"), as --speed and the frontend read it --
 +  // not a percent row, which keeps a 0..1 fraction: that showed the default as
 +  // 10000% and wrote 1 (one percent) for what it displayed as 100%.
-+  number("emu.speed", "游戏速度", 25, 400, 5, "100", FlagLive, Dep::NetSession,
-+         "相对帧率上限的运行速度", nullptr, nullptr, "%"),
+   number("emu.speed", "GAME SPEED", 25, 400, 5, "100", FlagLive, Dep::NetSession,
+          "HOW FAST THE GAME RUNS AGAINST THE LIMITER", nullptr, nullptr, "%"),
+-  // Multiple of real time (a floor), not of the limiter, so it never slows
+-  // the game below this even on a fast limiter.
 +  // From 2: "1X" is real time, which is what not fast-forwarding already is.
 +  // A multiple of real time, not of the limiter: it is a floor, so holding
 +  // fast forward on a 240 Hz limiter never slows the game down to it.
 +  // UNLIMITED uncaps whatever the limiter says, which is why it is still
 +  // here now that the limiter has an UNLIMITED of its own -- a 60 Hz game
 +  // with a fast forward that goes as fast as the machine will.
-+  number("emu.ff_speed", "快进速度", 2, 16, 1, "0", FlagLive, Dep::NetSession,
-+         "按住快进时至少达到此倍实时速度", "0", "无限制", "X"),
-+  number("emu.ff_skip", "快进跳帧", 0, 9, 1, "3", FlagLive, Dep::NetSession,
-+         "快进时每 N+1 帧只显示一帧"),
+   number("emu.ff_speed", "FAST FORWARD SPEED", 2, 16, 1, "0", FlagLive, Dep::NetSession,
+          "AT LEAST THIS MANY TIMES REAL TIME WHILE FAST FORWARD IS HELD", "0", "UNLIMITED", "X"),
+   number("emu.ff_skip", "FAST FORWARD SKIP", 0, 9, 1, "3", FlagLive, Dep::NetSession,
+          "WHILE FAST FORWARDING, SHOW ONE FRAME IN THIS MANY PLUS ONE"),
+-  // AUTO raises the buffer only when the machine keeps up yet still ran dry
+-  // (a hitch, not a machine too slow to keep up at all).
 +  // The one audio row, and it lives here rather than on an audio page of its
 +  // own: a page for a single row is not worth the depth it adds. AUTO holds
 +  // the default and raises it only when the machine is keeping up and still
 +  // ran the queue dry -- a deeper buffer answers a hitch, never a machine
 +  // that cannot keep up at all. docs/audio-buffer-scoping.md.
-+  number("audio.buffer_size", "音频缓冲", 20, 200, 10, "auto", FlagLive, Dep::None,
-+         "提前缓冲的声音，越低延迟越小，也更容易听到卡顿",
-+         "auto", "自动", " MS"),
-+  boolean("emu.autosave", "退出时存档", "false", FlagLive, Dep::None,
-+          "退出模拟器时自动存档以便续玩"),
-+  boolean("emu.autoload", "启动时读档", "false", FlagRestart, Dep::None,
-+          "启动游戏时若有存档则自动继续"),
+   number("audio.buffer_size", "AUDIO BUFFER", 20, 200, 10, "auto", FlagLive, Dep::None,
+          "SOUND HELD AHEAD. LOWER IS LESS DELAY, LESS SLACK BEFORE A LATE FRAME IS HEARD",
+          "auto", "AUTO", " MS"),
+@@ -95,10 +135,18 @@ const Setting kEmuSettings[] = {
+           "SAVE A STATE WHEN THE EMULATOR EXITS, TO RESUME FROM"),
+   boolean("emu.autoload", "AUTOLOAD ON START", "false", FlagRestart, Dep::None,
+           "WHEN A GAME STARTS, RESUME FROM ITS AUTOSAVED STATE IF THERE IS ONE"),
 +  // Applied when the NAND is opened, so only a new DSi session sees it.
-+  boolean("emu.dsi_hide_installed", "隐藏 NAND 的 DSiWare", "false", FlagRestart, Dep::None,
-+          "在 DSi 菜单隐藏 NAND 自带软件，镜像本身不变"),
+   boolean("emu.dsi_hide_installed", "HIDE NAND DSIWARE", "false", FlagRestart, Dep::None,
+           "DSI MENU: HIDE THE NAND DUMP'S OWN TITLES. THE DUMP IS NOT CHANGED"),
 +  // Live: switching it writes or clears the .dspr.nds files at once.
-+  boolean("emu.dsi_nand_shortcuts", "DSi NAND 链接", "false", FlagLive, Dep::ShortcutsPath,
-+          "在游戏列表中直接启动 NAND 内的 DSiWare"),
+   boolean("emu.dsi_nand_shortcuts", "DSI NAND LINKS", "false", FlagLive, Dep::ShortcutsPath,
+           "GAME LIST ENTRIES THAT START THE NAND'S DSIWARE WITHOUT THE DSI MENU"),
 +  // Live, and it was not always: it used to need a restart because the MAC was
 +  // only randomized into the firmware image for a run that asked for a session,
 +  // and two instances sharing a dump's MAC is the fault that made PictoChat
 +  // drop its own messages. The MAC is settled every run now, so the radio can
 +  // go up and come down whenever -- a Pokemon player can trade and then carry
 +  // on playing. docs/wifi-scoping.md.
-+  pick("net.mode", "网络功能", kNetMode, 5, "off", FlagLive, Dep::Net,
-+       "本地无线通信或联网。自动会先尝试加入会话"),
+   pick("net.mode", "NETWORK FEATURES", kNetMode, 5, "off", FlagLive, Dep::Net,
+        "LOCAL WIRELESS, OR INTERNET. AUTO JOINS A SESSION, ELSE HOSTS ONE"),
    pick("wifi.dns", "DNS", kWifiDns, 2, "wiimmfi", FlagRestart, Dep::NetInternet,
--       "WHERE THE GAME LOOKS UP ITS SERVERS. NINTENDO'S ARE GONE; WIIMMFI REPLACES THEM"),
-+       "游戏查询服务器的方式。任天堂的已关停，改用 Wiimmfi"),
-   end(),
- };
- 
- const Setting kVideoSettings[] = {
--  pick("video.integer_scale", "INTEGER SCALE", kIntScale, 3, "off", FlagDeferred, Dep::None,
--       "WHOLE PANEL PIXELS PER DS PIXEL. UNDER LETTERBOXES, OVER CROPS"),
--  boolean("video.linear", "BILINEAR", "false", FlagDeferred, Dep::PanelEffects,
--          "SMOOTH SCALING. OVERRIDES THE GRID, SEAMS AND CHUNKY"),
--  percent("video.lcd_grid", "LCD GRID", 0, 100, 10, "0", FlagDeferred, Dep::GridSeam,
--          "A DARK SEAM AROUND EVERY DS PIXEL, LIKE THE ORIGINAL SCREEN"),
--  pick("video.seam", "SEAM", kSeam, 3, "dark", FlagDeferred, Dep::GridSeam,
--       "DARK DRAWS THE GRID. BLEND SOFTENS ONLY THE STRADDLING PIXEL"),
--  pick("video.chunky", "CHUNKY", kChunky, 7, "false", FlagDeferred, Dep::Chunky,
--       "DRAW BLOCKS OF DS PIXELS AS ONE FLAT CELL, FOR PANELS AT ODD SCALES"),
--  number("video.chunky_cell", "CHUNKY CELL", 2, 8, 1, "auto", FlagDeferred, Dep::ChunkyCell,
--         "PANEL PIXELS PER CELL", "auto", "AUTO"),
--  boolean("video.aa", "ANTI-ALIASING", "false", FlagLive, Dep::None,
--          "3D EDGES: THE HARDWARE'S BLEND ON THE CPU RASTER, 4X MSAA ON THE GPU RASTER"),
--  boolean("video.gpu3d", "GPU 3D", "false", FlagLive, Dep::None,
--          "DRAW THE 3D LAYER ON THE GPU. NEEDS VULKAN; THE CPU DRAWS IT OTHERWISE"),
--  boolean("video.fps", "FPS COUNTER", "false", FlagLive, Dep::None,
--          "FRAMES PER SECOND IN THE CORNER OF THE SCREEN"),
--  boolean("video.fullscreen", "FULLSCREEN", "false", FlagDeferred, Dep::Windowed, nullptr),
-+  pick("video.integer_scale", "整数缩放", kIntScale, 3, "off", FlagDeferred, Dep::None,
-+       "每个 DS 像素占用的整数面板像素，不足留黑边，超出会裁切"),
-+  boolean("video.linear", "线性过滤", "false", FlagDeferred, Dep::PanelEffects,
-+          "平滑缩放，会覆盖网格、接缝与像素块"),
-+  percent("video.lcd_grid", "液晶网格", 0, 100, 10, "0", FlagDeferred, Dep::GridSeam,
-+          "在每个 DS 像素周围画暗缝，模拟原生屏幕"),
-+  pick("video.seam", "接缝", kSeam, 3, "dark", FlagDeferred, Dep::GridSeam,
-+       "暗色会绘制网格，混合只柔化跨界的那一像素"),
-+  pick("video.chunky", "像素块", kChunky, 7, "false", FlagDeferred, Dep::Chunky,
-+       "把相邻 DS 像素合并为一个色块，适合非整数缩放"),
-+  number("video.chunky_cell", "色块尺寸", 2, 8, 1, "auto", FlagDeferred, Dep::ChunkyCell,
-+         "每个色块占用的面板像素数", "auto", "自动"),
-+  number("video.screen_gap", "屏幕间距", 0, 128, 4, "0", FlagDeferred, Dep::OneWindow,
-+         "上下叠放或左右并排时两块屏幕之间的面板像素间距。自动会把间距推到屏幕边缘",
-+         "auto", "自动"),
+@@ -119,6 +167,12 @@ const Setting kVideoSettings[] = {
+        "DRAW BLOCKS OF DS PIXELS AS ONE FLAT CELL, FOR PANELS AT ODD SCALES"),
+   number("video.chunky_cell", "CHUNKY CELL", 2, 8, 1, "auto", FlagDeferred, Dep::ChunkyCell,
+          "PANEL PIXELS PER CELL", "auto", "AUTO"),
++  number("video.screen_gap", "SCREEN GAP", 0, 128, 4, "0", FlagDeferred, Dep::OneWindow,
++         "PANEL PIXELS BETWEEN THE TWO SCREENS WHEN THEY ARE STACKED OR SIDE BY SIDE. AUTO PUSHES THEM TO THE EDGES",
++         "auto", "AUTO"),
 +  // v3.0.0 起它只是一个开关：文件里写的是 true / false。旧的 accurate /
 +  // enhanced / smooth 仍按“开”读入，但效果已经相同，所以不再列成一串，
 +  // 否则菜单会在表里找不到当前值，原样画出文件的 true / false。
-+  boolean("video.aa", "抗锯齿", "false", FlagLive, Dep::None,
-+          "3D 边缘，CPU 渲染时按硬件那样混合，GPU 渲染时按 4 倍多重采样混合"),
-+  boolean("video.gpu3d", "图形加速", "false", FlagLive, Dep::None,
-+          "在 GPU 上绘制 3D 图层，需要 Vulkan。否则仍由 CPU 绘制"),
-+  boolean("video.fps", "帧数显示", "false", FlagLive, Dep::None,
-+          "在屏幕角落显示每秒帧数"),
-+  boolean("video.fullscreen", "全屏", "false", FlagDeferred, Dep::Windowed, nullptr),
-   end(),
- };
- 
- const Setting kLayoutSettings[] = {
--  pick("video.layout", "LAYOUT", kLayout, 6, "vertical", FlagDeferred, Dep::OneWindow,
--       "HOW THE TWO SCREENS SHARE THE WINDOW"),
--  pick("video.screen", "MAIN SCREEN", kScreen, 2, "top", FlagDeferred, Dep::None,
--       "THE SCREEN SHOWN ALONE, LARGE OR FIRST"),
+   boolean("video.aa", "ANTI-ALIASING", "false", FlagLive, Dep::None,
+           "3D EDGES: THE HARDWARE'S BLEND ON THE CPU RASTER, 4X MSAA ON THE GPU RASTER"),
+   boolean("video.gpu3d", "GPU 3D", "false", FlagLive, Dep::None,
+@@ -134,8 +188,6 @@ const Setting kLayoutSettings[] = {
+        "HOW THE TWO SCREENS SHARE THE WINDOW"),
+   pick("video.screen", "MAIN SCREEN", kScreen, 2, "top", FlagDeferred, Dep::None,
+        "THE SCREEN SHOWN ALONE, LARGE OR FIRST"),
 -  number("video.screen_gap", "SCREEN GAP", 0, 128, 4, "0", FlagDeferred, Dep::OneWindow,
 -         "PANEL PIXELS BETWEEN THE TWO SCREENS WHEN THEY ARE STACKED OR SIDE BY SIDE. AUTO PUSHES THEM TO THE EDGES", "auto", "AUTO"),
--  pick("video.pip_corner", "PIP CORNER", kCorner, 4, "br", FlagDeferred, Dep::Pip,
--       "WHERE THE SMALL SCREEN SITS"),
--  percent("video.pip_scale", "PIP SIZE", 10, 90, 5, "0.33", FlagDeferred, Dep::Pip,
--          "HOW BIG THE SMALL SCREEN IS AGAINST THE LARGE ONE"),
--  percent("video.pip_alpha", "PIP OPACITY", 0, 100, 10, "1", FlagDeferred, Dep::Pip,
--          "HOW SOLID THE SMALL SCREEN IS AT REST"),
--  number("video.pip_touch_hold", "PIP TOUCH HOLD", 10, 300, 10, "60", FlagLive, Dep::PipTouchHold,
--         "FRAMES THE SMALL SCREEN STAYS SOLID AFTER IT IS TOUCHED", "0", "NEVER FADE"),
--  percent("video.dominant_ratio", "DOMINANT RATIO", 10, 90, 5, "auto", FlagDeferred, Dep::Dominant,
--          "THE SMALLER SCREEN'S SIZE. AUTO FITS WHOLE PIXELS", "auto", "AUTO"),
--  percent("video.dominant_threshold", "DOMINANT THRESHOLD", 10, 99, 5, "0.25", FlagDeferred, Dep::DominantThreshold,
--          "THE SMALLEST SECONDARY AUTO WILL ACCEPT"),
--  check("video.layout_cycle.vertical", "CYCLE VERTICAL", "true", FlagLive, Dep::OneWindow,
--        "THE LAYOUT HOTKEYS STEP THROUGH THE TICKED LAYOUTS"),
--  check("video.layout_cycle.horizontal", "CYCLE HORIZONTAL", "true", FlagLive, Dep::OneWindow,
--        "THE LAYOUT HOTKEYS STEP THROUGH THE TICKED LAYOUTS"),
--  check("video.layout_cycle.single", "CYCLE SINGLE", "true", FlagLive, Dep::OneWindow,
--        "THE LAYOUT HOTKEYS STEP THROUGH THE TICKED LAYOUTS"),
--  check("video.layout_cycle.pip", "CYCLE PIP", "true", FlagLive, Dep::OneWindow,
--        "THE LAYOUT HOTKEYS STEP THROUGH THE TICKED LAYOUTS"),
--  check("video.layout_cycle.dominant_v", "CYCLE DOMINANT V", "true", FlagLive, Dep::OneWindow,
--        "THE LAYOUT HOTKEYS STEP THROUGH THE TICKED LAYOUTS"),
--  check("video.layout_cycle.dominant_h", "CYCLE DOMINANT H", "true", FlagLive, Dep::OneWindow,
--        "THE LAYOUT HOTKEYS STEP THROUGH THE TICKED LAYOUTS. ONE ALWAYS STAYS"),
-+  pick("video.layout", "布局", kLayout, 6, "vertical", FlagDeferred, Dep::OneWindow,
-+       "两个屏幕在窗口中的排列方式"),
-+  pick("video.screen", "主屏幕", kScreen, 2, "top", FlagDeferred, Dep::None,
-+       "单独显示、放大显示或排在前面的屏幕"),
-+  pick("video.pip_corner", "画中画位置", kCorner, 4, "br", FlagDeferred, Dep::Pip,
-+       "小屏幕所处的位置"),
-+  percent("video.pip_scale", "画中画大小", 10, 90, 5, "0.33", FlagDeferred, Dep::Pip,
-+          "小屏相对大屏的尺寸比例"),
-+  percent("video.pip_alpha", "画中画不透明度", 0, 100, 10, "1", FlagDeferred, Dep::Pip,
-+          "静止时小屏幕的实心程度"),
-+  number("video.pip_touch_hold", "画中画触摸保持", 10, 300, 10, "60", FlagLive, Dep::PipTouchHold,
-+         "被触摸后小屏幕保持实心的帧数", "0", "永不淡出"),
-+  percent("video.dominant_ratio", "主次比例", 10, 90, 5, "auto", FlagDeferred, Dep::Dominant,
-+          "副屏的尺寸占比，自动按整像素适配", "auto", "自动"),
-+  percent("video.dominant_threshold", "主次阈值", 10, 99, 5, "0.25", FlagDeferred, Dep::DominantThreshold,
-+          "自动模式下可接受的最小副屏尺寸"),
+   pick("video.pip_corner", "PIP CORNER", kCorner, 4, "br", FlagDeferred, Dep::Pip,
+        "WHERE THE SMALL SCREEN SITS"),
+   percent("video.pip_scale", "PIP SIZE", 10, 90, 5, "0.33", FlagDeferred, Dep::Pip,
+@@ -148,6 +200,8 @@ const Setting kLayoutSettings[] = {
+           "THE SMALLER SCREEN'S SIZE. AUTO FITS WHOLE PIXELS", "auto", "AUTO"),
+   percent("video.dominant_threshold", "DOMINANT THRESHOLD", 10, 99, 5, "0.25", FlagDeferred, Dep::DominantThreshold,
+           "THE SMALLEST SECONDARY AUTO WILL ACCEPT"),
 +  // What the layout hotkeys step through, one box per layout. Live: the
 +  // hotkeys read the list when pressed, and nothing on screen moves.
-+  check("video.layout_cycle.vertical", "循环 纵向", "true", FlagLive, Dep::OneWindow,
-+        "布局快捷键会在勾选的布局之间循环"),
-+  check("video.layout_cycle.horizontal", "循环 横向", "true", FlagLive, Dep::OneWindow,
-+        "布局快捷键会在勾选的布局之间循环"),
-+  check("video.layout_cycle.single", "循环 单屏", "true", FlagLive, Dep::OneWindow,
-+        "布局快捷键会在勾选的布局之间循环"),
-+  check("video.layout_cycle.pip", "循环 画中画", "true", FlagLive, Dep::OneWindow,
-+        "布局快捷键会在勾选的布局之间循环"),
-+  check("video.layout_cycle.dominant_v", "循环 主次纵向", "true", FlagLive, Dep::OneWindow,
-+        "布局快捷键会在勾选的布局之间循环"),
-+  check("video.layout_cycle.dominant_h", "循环 主次横向", "true", FlagLive, Dep::OneWindow,
-+        "布局快捷键在勾选的布局间循环，始终保留一个"),
+   check("video.layout_cycle.vertical", "CYCLE VERTICAL", "true", FlagLive, Dep::OneWindow,
+         "THE LAYOUT HOTKEYS STEP THROUGH THE TICKED LAYOUTS"),
+   check("video.layout_cycle.horizontal", "CYCLE HORIZONTAL", "true", FlagLive, Dep::OneWindow,
+@@ -181,6 +235,47 @@ const Setting kUserSettings[] = {
    end(),
  };
  
- // [user]: what a game sees as the console's owner. Restart-only: baked into
- // generated firmware at boot; unused with a real dump.
- const Setting kUserSettings[] = {
--  text("user.nickname", "NICKNAME", 10, "DSperate", FlagRestart,
--       "WHAT GAMES CALL YOU"),
--  text("user.message", "MESSAGE", 26, "", FlagRestart,
--       "THE GREETING THE DS MENU SHOWS"),
--  pick("user.colour", "FAVOURITE COLOUR", kColour, 16, "0", FlagRestart, Dep::None,
--       "SOME GAMES COLOUR THEMSELVES WITH IT"),
--  pick("user.birthday_month", "BIRTHDAY MONTH", kMonth, 12, "1", FlagRestart, Dep::None,
--       "GAMES THAT WISH YOU A HAPPY BIRTHDAY USE THIS"),
--  number("user.birthday_day", "BIRTHDAY DAY", 1, 31, 1, "1", FlagRestart, Dep::None,
--         "NOT CHECKED AGAINST THE MONTH, AS THE CONSOLE DOES NOT EITHER"),
--  pick("user.language", "LANGUAGE", kLanguage, 6, "1", FlagRestart, Dep::None,
--       "THE LANGUAGE MULTI-LANGUAGE GAMES START IN"),
-+  text("user.nickname", "昵称", 10, "DSperate", FlagRestart,
-+       "游戏中显示的名字"),
-+  text("user.message", "留言", 26, "", FlagRestart,
-+       "DS 菜单上显示的问候语"),
-+  pick("user.colour", "喜欢的颜色", kColour, 16, "0", FlagRestart, Dep::None,
-+       "部分游戏会用它做自己的配色"),
-+  pick("user.birthday_month", "生日月份", kMonth, 12, "1", FlagRestart, Dep::None,
-+       "部分游戏会在这个月祝你生日快乐"),
-+  number("user.birthday_day", "生日日期", 1, 31, 1, "1", FlagRestart, Dep::None,
-+         "不与月份校验，与实机行为一致"),
-+  pick("user.language", "主机语言", kLanguage, 6, "1", FlagRestart, Dep::None,
-+       "多语言游戏的初始语言"),
-+  end(),
-+};
-+
 +// [input]: turbo, one checkbox per DS button. A held button that is ticked
 +// here is handed to the game as a square wave -- half a period down, half up
 +// -- so holding it is the same as tapping it `input.turbo_rate` times a
@@ -1674,34 +1327,37 @@ index 8659268..3f601cf 100644
 +// 关/开 does not.
 +// Turbo mode: hold = the button must stay down to fire; tap = one press
 +// latches it on and it keeps firing until the next press.
-+const Choice kTurboMode[] = {{"hold", "长按"}, {"toggle", "单击"}};
++const Choice kTurboMode[] = {{"hold", "HOLD"}, {"toggle", "TAP"}};
 +const Setting kInputSettings[] = {
-+  boolean("input.turbo", "连发", "false", FlagLive, Dep::None,
-+          "开启后，勾选的按键可自动连发（方式见连发模式）"),
++  boolean("input.turbo", "TURBO", "false", FlagLive, Dep::None,
++          "WHEN ON, TICKED BUTTONS AUTOFIRE (SEE TURBO MODE)"),
 +  // hold: the button fires only while held (the original behaviour). toggle:
 +  // a single press latches it on and it keeps firing until pressed again, so
 +  // you do not have to keep the button down.
-+  pick("input.turbo_mode", "连发模式", kTurboMode, 2, "hold", FlagLive, Dep::Turbo,
-+       "长按：按住才连发。单击：按一下开始持续连发，再按一下停止"),
++  pick("input.turbo_mode", "TURBO MODE", kTurboMode, 2, "hold", FlagLive, Dep::Turbo,
++       "HOLD: FIRES ONLY WHILE HELD. TAP: PRESS ONCE TO KEEP FIRING, PRESS AGAIN TO STOP"),
 +  // HZ, not 次/秒: the suffix joins the number before tr_text sees the pair,
 +  // so a Chinese unit here would be drawn in Chinese with English set.
-+  number("input.turbo_rate", "连发速率", 5, 30, 1, "12", FlagLive, Dep::Turbo,
-+         "每秒按下并松开的次数。太快游戏可能来不及认出单次按下", nullptr, nullptr, " HZ"),
-+  check("input.turbo.a", "连发 A", "false", FlagLive, Dep::Turbo, nullptr),
-+  check("input.turbo.b", "连发 B", "false", FlagLive, Dep::Turbo, nullptr),
-+  check("input.turbo.select", "连发 SELECT", "false", FlagLive, Dep::Turbo, nullptr),
-+  check("input.turbo.start", "连发 START", "false", FlagLive, Dep::Turbo, nullptr),
-+  check("input.turbo.right", "连发 右", "false", FlagLive, Dep::Turbo, nullptr),
-+  check("input.turbo.left", "连发 左", "false", FlagLive, Dep::Turbo, nullptr),
-+  check("input.turbo.up", "连发 上", "false", FlagLive, Dep::Turbo, nullptr),
-+  check("input.turbo.down", "连发 下", "false", FlagLive, Dep::Turbo, nullptr),
-+  check("input.turbo.r", "连发 R", "false", FlagLive, Dep::Turbo, nullptr),
-+  check("input.turbo.l", "连发 L", "false", FlagLive, Dep::Turbo, nullptr),
-+  check("input.turbo.x", "连发 X", "false", FlagLive, Dep::Turbo, nullptr),
-+  check("input.turbo.y", "连发 Y", "false", FlagLive, Dep::Turbo, nullptr),
-   end(),
- };
- 
++  number("input.turbo_rate", "TURBO RATE", 5, 30, 1, "12", FlagLive, Dep::Turbo,
++         "TAPS AND RELEASES PER SECOND. TOO FAST AND A GAME MAY MISS ONE", nullptr, nullptr, " HZ"),
++  check("input.turbo.a", "TURBO A", "false", FlagLive, Dep::Turbo, nullptr),
++  check("input.turbo.b", "TURBO B", "false", FlagLive, Dep::Turbo, nullptr),
++  check("input.turbo.select", "TURBO SELECT", "false", FlagLive, Dep::Turbo, nullptr),
++  check("input.turbo.start", "TURBO START", "false", FlagLive, Dep::Turbo, nullptr),
++  check("input.turbo.right", "TURBO RIGHT", "false", FlagLive, Dep::Turbo, nullptr),
++  check("input.turbo.left", "TURBO LEFT", "false", FlagLive, Dep::Turbo, nullptr),
++  check("input.turbo.up", "TURBO UP", "false", FlagLive, Dep::Turbo, nullptr),
++  check("input.turbo.down", "TURBO DOWN", "false", FlagLive, Dep::Turbo, nullptr),
++  check("input.turbo.r", "TURBO R", "false", FlagLive, Dep::Turbo, nullptr),
++  check("input.turbo.l", "TURBO L", "false", FlagLive, Dep::Turbo, nullptr),
++  check("input.turbo.x", "TURBO X", "false", FlagLive, Dep::Turbo, nullptr),
++  check("input.turbo.y", "TURBO Y", "false", FlagLive, Dep::Turbo, nullptr),
++  end(),
++};
++
+ int settings_count(const Setting* table) {
+   int n = 0;
+   while (table[n].key) ++n;
 @@ -243,7 +338,12 @@ std::string display_value(const Setting& s, const std::string& value) {
    case T::Bool:
    case T::Pick: {

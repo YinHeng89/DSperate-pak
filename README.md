@@ -39,15 +39,19 @@ and keeps DSperate as the saved choice for when you reinstall it.
 This branch carries ten reviewed pak patches that sit on top of upstream
 DSperate v3.0.0: patches 0001-0005 are the pak features (cache/archive policy,
 save durability, lid-resume, deterministic `--version`, and the Leaf
-RetroAchievements account adapter), and patches 0006-0010 are the Chinese menu
-(an embedded CJK face, the zh/en table and the drawing path that makes a Chinese
-row readable, the rows that were still drawn in the wrong language, and the
-controls page's face-button pips). The pause menu, both settings pages and the
-account page then speak the language `ui.language` selects, with English as the
-default. The patches are re-anchored onto v3.0.0 as a series in
+RetroAchievements account adapter), 0007 also carries the Turbo (连发) page, and
+0006-0010 are the Chinese menu (an English&rarr;Chinese overlay table keyed by the
+English the sources are written in, the embedded CJK face and the drawing path
+that makes a Chinese row readable, the menu tests, and the controls page's
+face-button pips). The sources themselves stay in English, the language upstream
+writes them in, so a rebase onto a new tag is a small diff. The pause menu, both
+settings pages and the account page then speak the language `ui.language`
+selects, with English as the default and the Chinese supplied by that table —
+so following an upstream release is a matter of rebasing the feature patches and
+adding Chinese for the strings that are new, one line each. The patches are re-anchored onto v3.0.0 as a series in
 `standalone/patches/`, so `make standalone` builds from a clean clone of the
 pinned upstream commit plus that series rather than from a pre-merged tree. It is
-host-verified only: two clean builds reproduce the binary `328fb59e…`
+host-verified only: two clean builds reproduce the binary `f38afcc4…`
 (5,472,016 bytes) from the pinned commit plus the patch series, `--version`
 reports `v3.0.0 (1b76c35)` from both the lock and a rebuild, the device
 verification passes, seven real-executable archive CLI checks pass, and the pak

@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "note": "Everything needed to identify the shipped DSperate binary. A fresh clone of this repository plus Docker is the whole toolchain: no sibling checkout, no locally built image, no opaque downloaded binary. The artifact is built by cloning the pinned upstream commit (core.source_url @ core.source_commit) and applying the re-anchored patch series in patches/ (0001-0010) in order; each patch's sha256 is checked before it is applied. The result is identified by artifact.sha256, which is checked rather than trusted. `make standalone` refuses a source archive or artifact whose sha256 does not match this file. The Chinese localization lives in patches 0006-0010.",
+  "note": "Everything needed to identify the shipped DSperate binary. A fresh clone of this repository plus Docker is the whole toolchain: no sibling checkout, no locally built image, no opaque downloaded binary. The artifact is built by cloning the pinned upstream commit (core.source_url @ core.source_commit) and applying the re-anchored patch series in patches/ (0001-0010) in order; each patch's sha256 is checked before it is applied. The result is identified by artifact.sha256, which is checked rather than trusted. `make standalone` refuses a source archive or artifact whose sha256 does not match this file. The menu's UI text stays in English -- the language upstream writes it in, so a rebase against a new tag is a small diff -- and the Chinese is one overlay table, tr_data.inc, keyed by that English and added by 0006; giving a new upstream string its Chinese is one line in that table and nothing at a call site.",
   "core": {
     "id": "dsperate",
     "source_url": "https://github.com/beebono/DSperate.git",
@@ -91,23 +91,23 @@
     },
     {
       "file": "0006-chinese-localization.patch",
-      "sha256": "5d0b0a7c06672dff8019a299aec8b71fd1687f323f4d0bc8935e35d0f082616a",
-      "note": "The CJK face and i18n framework: stb_truetype plus a WenQuanYi Micro Hei subset embedded in font_cn_data.inc, i18n.h, tr_data.inc (zh<->en pairs) and the text layer that routes every code point through it. Built by tools/make_menu_font.py. No UI string is touched by this patch alone. Rebased onto v3.0.0."
+      "sha256": "5bad4e343bc16e552c6099026f0b251f118112b350acf82a7f3804fe52f3bbf6",
+      "note": "The Chinese overlay and the i18n framework: stb_truetype plus a WenQuanYi Micro Hei subset embedded in font_cn_data.inc, i18n.h, and tr_data.inc -- 315 English->Chinese pairs keyed by the English the sources are written in. English mode draws the key unchanged and never consults the table; Chinese mode resolves it. Built by tools/make_menu_font.py. No UI string is touched by this patch alone. Rebased onto v3.0.0."
     },
     {
-      "file": "0007-zh-menu-and-ui-language.patch",
-      "sha256": "b17bde6f22729ed968a9c84f47317c8ae3357aac2dda0a6434e65078ad343340",
-      "note": "The Chinese strings and the switch that selects them, on top of 0006: i18n.h/tr_data.inc plus the literals in menu.cpp/settings.cpp/main.cpp; draw_text and text_width resolve every string through tr_text so one setting flips the whole menu. Adds a UI LANGUAGE / 界面语言 row on OPTIONS (ui.language, persisted, distinct from user.language). Rebased onto v3.0.0."
+      "file": "0007-menu-ui-language-and-turbo-page.patch",
+      "sha256": "f4d2029257fed4781eafcf98a07f49dea71b4c7c08e75b76b1f9ac59a9e4b587",
+      "note": "The menu itself, written in English: the rows in menu.cpp/settings.cpp/main.cpp, the Turbo (连发) page this pak adds -- input.turbo, its mode and rate and one checkbox per DS button, on Page::Turbo -- and the switch that selects a language. draw_text and text_width resolve every string through tr_text, so one setting flips the whole menu; the Chinese it resolves to lives in 0006's table. Adds a UI LANGUAGE row on OPTIONS (ui.language, persisted, distinct from user.language). Rebased onto v3.0.0."
     },
     {
       "file": "0008-cjk-drawing.patch",
       "sha256": "e214966c23a929ca0852e54b10a9219dcabf3ad56deb82f8183f6baf9dd4221a",
-      "note": "Wires 0006's face into the drawing path so a Chinese row is readable; text_width and draw_text share step_for. Regenerates font_cn_data.inc against the current strings. Rebased onto v3.0.0."
+      "note": "Wires 0006's face into the drawing path so a Chinese row is readable; text_width and draw_text share step_for. Regenerates font_cn_data.inc against the current strings, which after the English baseline means the Chinese in tr_data.inc rather than the sources. Rebased onto v3.0.0."
     },
     {
-      "file": "0009-english-rows-through-tr-text.patch",
-      "sha256": "4fc97fd54e1b292ff5461c708ca8e60cf98694ea0f65f91dbbc279167bcd724f",
-      "note": "Sends the rows that format before they translate through tr_text (the format and its values), so English mode stops drawing Chinese and the options page's widest-row measurement is correct. Rebased onto v3.0.0."
+      "file": "0009-menu-tests.patch",
+      "sha256": "76a33f1188760dc5575c4c1c052d825367f6ca0ebd0d67a8dd424f91d51eb0b2",
+      "note": "The C++ menu tests: the page walk, the strict leak count, and the coverage test that walks every compiled settings table in Chinese mode and asks for each row's label, note and choice. That last one is what answers, exactly, whether a row has its Chinese -- which no regex over the sources can, because a helper's arguments do not say which is the label and which is an ini value. Rebased onto v3.0.0."
     },
     {
       "file": "0010-face-pips-that-follow-the-pad-own-naming.patch",
@@ -128,9 +128,9 @@
   },
   "artifact": {
     "file_name": "dsperate",
-    "sha256": "328fb59e78709a31b33115b3c7d4c61fc99f891e2a5365a04143e9a97eb170cd",
+    "sha256": "f38afcc4f0127876fd31507fe67ffa48ae3caa5613dcd65309e93cf7f1a0ed4f",
     "size_bytes": 5472016,
-    "note": "Recorded after the build described by this lock: the pinned commit (1b76c35) plus the patch series (0001-0010) applied in order, SOURCE_DATE_EPOCH pinned to 1b76c35's committer time, -DDSPERATE_CHEEVOS_VERSION=3.0.0, no PGO, then $CROSS-strip --strip-unneeded, which is what the v2.1.1 pipeline did too and what the device verification requires. The binary embeds the WenQuanYi Micro Hei subset and draws the CJK blocks through it (0006); Latin keeps the 5x7 grid and every row goes through tr_text before it is drawn (0007, 0009); every string the menu can paint is keyed in the language the table resolves, including the achievement status line the account page wraps (0007, 0008); and the face-button pips follow the pad's own naming of x and y (0010). It does not carry a PGO profile (see build.pgo_note) and it was built without Vulkan, because the pinned toolchain image has no vulkan.h: the GPU 3D row is a no-op on this build and the setting says so in Chinese. CI is the independent second-machine verifier; investigate any mismatch rather than overwriting this value."
+    "note": "Recorded after the build described by this lock: the pinned commit (1b76c35) plus the patch series (0001-0010) applied in order, SOURCE_DATE_EPOCH pinned to 1b76c35's committer time, -DDSPERATE_CHEEVOS_VERSION=3.0.0, no PGO, then $CROSS-strip --strip-unneeded, which is what the v2.1.1 pipeline did too and what the device verification requires. The binary embeds the WenQuanYi Micro Hei subset and draws the CJK blocks through it (0006); Latin keeps the 5x7 grid and every row goes through tr_text before it is drawn (0007); the sources are English and 0006's table supplies the Chinese, so a string with no entry reads English instead of breaking, including the achievement status line the account page wraps (0007, 0008); and the face-button pips follow the pad's own naming of x and y (0010). It does not carry a PGO profile (see build.pgo_note) and it was built without Vulkan, because the pinned toolchain image has no vulkan.h: the GPU 3D row is a no-op on this build and the setting says so in the language that is set. CI is the independent second-machine verifier; investigate any mismatch rather than overwriting this value."
   },
   "notice": {
     "file_name": "dsperate-notice",
@@ -148,7 +148,7 @@
     "baseline_tag": "v3.0.0",
     "fingerprint": "809474ad14a4d6afe4637ee8e9447bfa4e50eec7e65aa2114a389134113d8f6c",
     "entries": 490,
-    "check": " Against this baseline, the localized v3.0.0 tree draws 248 UI strings, of which 219 are not in the baseline; 213 of those carry Han and the other 6 are one ASCII technical label or a code comment (1X, 60 fps, < %s >, AUTO EMPTY, BIRTHDAY MONTH 11, the slot-row comment). Every string a player can read is covered. The v2.1.1 baseline's fingerprint is b7c405a332fb44694da40a6d38e6b52db6024ca623ccc3dc68737d58bc2d47e0 over 531 entries. ",
-    "note": "The menu's UI text at the pinned commit, as check-upstream-text.py reads it. repack.sh re-reads the same files out of the newest upstream tag and stops with exit 3 on anything the localization does not cover, so a pack never ships a string nobody translated."
+    "check": " Against this baseline, the localized v3.0.0 tree draws 275 UI strings, of which 238 are upstream's own wording unchanged -- the sources are English, which is what makes that number what it is -- and 37 are not in the baseline: 22 are rows this pak added (the Turbo page and its rate, mode and per-button checkboxes; the UI LANGUAGE row) and each has a Chinese entry in tr_data.inc, 8 are the Chinese side of that table rather than UI text at all, and 7 are technical or test strings that read the same in any language (' HZ', 1X, 60 fps, < %s >, AUTO EMPTY, BIRTHDAY MONTH 11, the slot-row comment). Before the English baseline the same measurement was 248 strings of which 219 were not in the baseline, because 213 of them carried Han. The v2.1.1 baseline's fingerprint is b7c405a332fb44694da40a6d38e6b52db6024ca623ccc3dc68737d58bc2d47e0 over 531 entries. ",
+    "note": "The menu's UI text at the pinned commit, as check-upstream-text.py reads it. The sources now carry that English themselves, so this measures the other way round: a string in the tree that is not in the baseline is a row this pak added, and the only question is whether tr_data.inc holds its Chinese -- which standalone/check-tr-coverage.py and the coverage test in 0009 both answer. Re-read it against a new upstream tag after a release to see which strings are new."
   }
 }

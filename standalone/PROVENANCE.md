@@ -13,7 +13,7 @@ Everything here is measured from the build, not from memory.
 | Licence | GPL-3.0-or-later (`LICENSE`) |
 | Pak base | `cfb037e` (`v2.1.1`, merge of PR #6) &mdash; the released pak the Chinese series started from |
 | Build | the pinned commit above, with `standalone/patches/0001-0010` applied in order (each sha256-locked); see the table below |
-| Patches | `patches/0001-pak-cache-and-archive-policy.patch`, `patches/0002-save-durability.patch`, `patches/0003-lid-resume-no-fabricated-close.patch`, `patches/0004-deterministic-version.patch`, `patches/0005-dsperate-ra-account-adapter.patch`, `patches/0006-chinese-localization.patch`, `patches/0007-zh-menu-and-ui-language.patch`, `patches/0008-cjk-drawing.patch`, `patches/0009-english-rows-through-tr-text.patch` and `patches/0010-face-pips-that-follow-the-pad-own-naming.patch` (the v3.0.0 series, re-anchored and sha256-locked; see below) |
+| Patches | `patches/0001-pak-cache-and-archive-policy.patch`, `patches/0002-save-durability.patch`, `patches/0003-lid-resume-no-fabricated-close.patch`, `patches/0004-deterministic-version.patch`, `patches/0005-dsperate-ra-account-adapter.patch`, `patches/0006-chinese-localization.patch`, `patches/0007-menu-ui-language-and-turbo-page.patch`, `patches/0008-cjk-drawing.patch`, `patches/0009-menu-tests.patch` and `patches/0010-face-pips-that-follow-the-pad-own-naming.patch` (the v3.0.0 series, re-anchored and sha256-locked; see below) |
 
 ## Patches are the v3.0.0 build
 
@@ -36,10 +36,10 @@ on 2026-09-28:
 | 0003 lid/resume | Keep and rebase. v3.0.0's lid implementation is unchanged and still fabricates a close on a device with no switch. |
 | 0004 deterministic `--version` | New. Prefers the lock's tag and commit over git so a source archive and a patched checkout report the same identity. |
 | 0005 Leaf account adapter | New. The `standalone-ra-account-v1` consumer; upstream has no equivalent. |
-| 0006 CJK face | New. A WenQuanYi Micro Hei subset and the text layer that draws it; no UI string is touched. |
-| 0007 Chinese menu and UI language | New. 199 zh/en pairs, the literals, and the `ui.language` switch that selects them; this patch also folds in the remaining menu rows and the account-page status line that the v2.1.1 series had split into 0010 and 0012. |
+| 0006 Chinese overlay | New. A WenQuanYi Micro Hei subset, the text layer that draws it, and `tr_data.inc` &mdash; 315 English&rarr;Chinese pairs keyed by the English the sources are written in. No UI string is touched. |
+| 0007 Menu, UI language, Turbo page | New. The rows in `menu.cpp`/`settings.cpp`/`main.cpp`, written in English as upstream writes them; the Turbo (连发) page this pak adds; and the `ui.language` switch. Its Chinese comes from 0006's table, so translating a row is a line there and nothing here. |
 | 0008 CJK drawing | New. Routes the drawing path through 0006's face, which is what makes a Chinese row readable. |
-| 0009 English rows through `tr_text` | New. The rows that format before they translate, so English mode stops drawing Chinese. |
+| 0009 Menu tests | New. The C++ menu tests: the page walk, the strict leak count, and the coverage test that walks every compiled settings table in Chinese mode. |
 | 0010 Face pips | New. Points the controls page's diamond pips at the button the pad's own naming binds (v2.1.1's 0011). |
 
 `standalone/patches/0001-pak-cache-and-archive-policy.patch` adds the pak's
@@ -114,74 +114,85 @@ names are rejected regardless of those flags.
 
 ## Chinese (Simplified) menu
 
-Five patches add a second UI language and the face to draw it in. They are
-proposals to upstream as much as the rest of the series: nothing in them is
-reachable unless `ui.language` is set to `zh`, English is the default, and
-every English string the menu could draw before still draws byte for byte.
+Five patches add a second UI language and the face to draw it in. The sources
+are written in English -- the language upstream writes them in, so that a
+rebase onto a new tag is a small diff -- and the Chinese is a single overlay
+table, `tr_data.inc`, keyed by that English. English is the default and needs
+no table at all: `tr_text` hands back what it was given. Setting `ui.language`
+to `zh` resolves every string through the table instead, and a string with no
+entry stays English rather than breaking a row.
 
-`standalone/patches/0006-chinese-localization.patch` is the face, and nothing
-else: stb_truetype plus a WenQuanYi Micro Hei subset embedded in
-`font_cn_data.inc`, and a text layer (`next_char` becomes `next_codepoint`,
-`text_width` and `draw_text` route every code point through the face). The
-subset carries ASCII 0x20..0x7E as well as Han, so Latin is rasterised by the
-same face in the same 7px box as Han and the two scripts come out the same size
-on a row; Latin keeps the face's real advance plus one pixel of letter spacing,
-Han keeps the wide step, and the 5x7 bitmap is left only as the fallback for
-glyphs the face lacks -- the face-button pips. No UI string is touched: the menu
-this patch produces still says everything in English. The subset is built by
-`tools/make_menu_font.py`, whose SOURCES table records the package, the file and
-the SHA-256 of exactly the face used (Debian/Ubuntu `fonts-wqy-microhei`
-0.2.0-beta-3.1) -- the same face and version as the one already shipped under
-`src/core/io/dsi_font/`, so the font exception notice is that directory's.
+That direction is the point of it. The series before this one wrote the Chinese
+into the sources and translated into English from it, so every UI line carried
+a diff against upstream and a merge had to be read in two languages. Now an
+upstream release is answered by adding Chinese for the strings that are new --
+one line each in `tr_data.inc`, and nothing at the call sites.
+`standalone/check-tr-coverage.py` lists exactly those.
 
-`standalone/patches/0007-zh-menu-and-ui-language.patch` is the Chinese and the
-switch that selects it, on top of 0006's face: `i18n.h` and `tr_data.inc` (199
-zh/en pairs) plus the literals themselves in `menu.cpp` and `settings.cpp`.
-`draw_text` and `text_width` resolve every string through `tr_text`, which is
-why a single setting flips the menu and both settings pages at once -- labels,
-notes, choice values and page titles -- with no per-string bookkeeping at the
-call sites. A new UI LANGUAGE row on the OPTIONS page toggles the `ui.language`
+`standalone/patches/0006-chinese-localization.patch` is the overlay and the
+framework, and no UI string: `i18n.h` -- the `UiLang` enum, `tr_text`, `ds_tr`
+and the counters the strict leak check uses -- `tr_data.inc`, 315
+English&rarr;Chinese pairs, and `tools/make_menu_font.py`, which builds the face
+the Chinese is drawn with. The table is generated and no generator ships with
+the patch; the pair list in `tr_data.inc` is the source. The menu this patch
+produces still says everything in English.
+
+`standalone/patches/0007-menu-ui-language-and-turbo-page.patch` is the menu
+itself, written in English: the rows in `menu.cpp`, `settings.cpp` and
+`main.cpp`, the Turbo (连发) page this pak adds, and the switch that selects a
+language. `tr_text` lives here, in `menu.cpp`, and `draw_text` and `text_width`
+resolve every string through it, which is why a single setting flips the menu
+and both settings pages at once -- labels, notes, choice values and page
+titles -- with no per-string bookkeeping at the call sites. A UI LANGUAGE row
+on the OPTIONS page toggles the `ui.language`
 config key live and persists it to `dsperate.ini`; it is deliberately distinct
-from `user.language`, which is the NDS firmware language games start in. The
-table is generated and no generator ships with the patch; the pair list in
-`tr_data.inc` is the source.
+from `user.language`, which is the NDS firmware language games start in.
 
-`standalone/patches/0008-cjk-drawing.patch` wires 0006's face into the drawing
-path, which is what makes a Chinese row readable: `next_cp` decodes one code
-point, `next_char` folds it to the 5x7 grid's ASCII letter, and `text_width`
-and `draw_text` both take their step from `step_for`, so the measurement and
-the painting cannot disagree. `cjk_square` is the single hand-over between the
-two paths. `test_menu` links `cjk_font.cpp`, and two tests cover the regression
+`standalone/patches/0008-cjk-drawing.patch` is the face: stb_truetype plus a
+WenQuanYi Micro Hei subset embedded in `font_cn_data.inc`, and the text layer
+that draws it. `next_cp` decodes one code point, `next_char` folds it to the
+5x7 grid's ASCII letter, and `text_width` and `draw_text` both take their step
+from `step_for`, so the measurement and the painting cannot disagree;
+`cjk_square` is the single hand-over between the two paths. The subset carries
+ASCII 0x20..0x7E as well as Han, so Latin is rasterised by the same face in the
+same 7px box as Han and the two scripts come out the same size on a row; Latin
+keeps the face's real advance plus one pixel of letter spacing, Han keeps the
+wide step, and the 5x7 bitmap is left only as the fallback for glyphs the face
+lacks -- the face-button pips. It is built by `tools/make_menu_font.py`, whose
+SOURCES table records the package, the file and the SHA-256 of exactly the face
+used (Debian/Ubuntu `fonts-wqy-microhei` 0.2.0-beta-3.1) -- the same face and
+version as the one already shipped under `src/core/io/dsi_font/`, so the font
+exception notice is that directory's. It scans `tr_data.inc` as well as the
+sources, which after the English baseline is where the Chinese it has to carry
+lives. `test_menu` links `cjk_font.cpp`, and two tests cover the regression
 that shipped: a carried code point measures a square and draws the face's glyph
 rather than the grid's `?`, and the pages draw with the language switched.
 
-`standalone/patches/0009-english-rows-through-tr-text.patch` sends the rows that
-format before they translate through the translation instead, which is the only
-way English mode stops drawing Chinese. `tr_text` matches `kTr` by `strcmp`,
-and the table holds the `snprintf` format, but what reached it after the values
-were filled in was the filled string, which no entry holds, so it came back
-unchanged and the row stayed Chinese. Now the format and both of its values go
-through `tr_text` before `snprintf`. The options page's widest-row measurement
-goes through it too: it measured the Chinese and drew the English, which is a
-panel too narrow for the row it holds.
+`standalone/patches/0009-menu-tests.patch` is the C++ menu tests: the page walk
+with the strict leak counter on, and the coverage test that walks every
+compiled settings table in Chinese mode and asks for each row's label, note and
+choice. That last one is what answers, exactly, whether a row has its Chinese --
+a regex over the sources cannot, because a row helper's arguments do not say
+which is the label and which is an ini value.
 
-`standalone/patches/0007-zh-menu-and-ui-language.patch` keys the
-rest of the menu's own text in the language the table resolves: the settings
-values that were still English in Chinese, the sentinels on fast forward and
-the picture-in-picture hold, and every label the Controls page puts on a row --
-the twenty hotkeys and the thirteen rows that are neither a hotkey nor a DS
-button. A DS button's own name is left alone: A, B, X, Y, L, R, START, SELECT
-and the d-pad are printed on the console, and the value beside each is the same
-name, so translating either side puts one word on both. The rest is 0009's
-ordering fault in the three places it was still there: a selected value drawn
-between arrows, a note wrapped on spaces, and the two halves of a disabled
-row's reason. Two rows are renamed (the slot page's title, and the root's slot
-row, which is keyed in Chinese so it stops turning back into SLOT), and the auto
-state's row is drawn only when there is an auto state to load or delete. The
-slot row is the one row `draw()` formats rather than takes whole, and in Chinese
-it is the longest line on the page: it did not fit the buffer, and `snprintf`
-cuts at a byte, so the row ended inside a character; the buffer is named now and
-held against the longest form by a `static_assert`.
+The rest of the menu's own text is keyed in `tr_data.inc` the same way: the
+settings values, the sentinels on fast forward and the picture-in-picture hold,
+and every label the Controls page puts on a row -- the twenty hotkeys and the
+thirteen rows that are neither a hotkey nor a DS button. A DS button's own name
+is left alone: A, B, X, Y, L, R, START, SELECT and the d-pad are printed on the
+console, and the value beside each is the same name, so translating either side
+puts one word on both. Three rows format before they translate and are resolved
+before the values go in for that reason: a selected value drawn between arrows,
+a note wrapped on spaces, and the two halves of a disabled row's reason -- the
+table holds the `snprintf` format, not the filled string, and `tr_text` matches
+by `strcmp`. The options page's widest-row measurement resolves before it
+measures too, or it measures one language and draws the other. Two rows are
+renamed (the slot page's title, and the root's slot row), and the auto state's
+row is drawn only when there is an auto state to load or delete. The slot row is
+the one row `draw()` formats rather than takes whole, and it is the longest line
+on the page: it did not fit the buffer, and `snprintf` cuts at a byte, so the
+row ended inside a character; the buffer is named now and held against the
+longest form by a `static_assert`.
 
 `standalone/patches/0010-face-pips-that-follow-the-pad-own-naming.patch`
 separates the two meanings of "x" on the MLP1 pad. The diamond pips on the
@@ -208,7 +219,7 @@ to 6, migrated as `pad.face_fix = off`, which leaves the explicit binding as
 the only half in play. A player who sets `face_fix = auto` themselves keeps it:
 the migration only seeds a key that is missing.
 
-`standalone/patches/0007-zh-menu-and-ui-language.patch` does the
+`standalone/patches/0007-menu-ui-language-and-turbo-page.patch` does the
 same for the account page's status line, which 0005 rewrote. The page wraps
 that line to the panel, so what reaches `draw_text` is a fragment and never the
 whole sentence, and a name or a hash joined onto the end is no more an entry
@@ -220,28 +231,41 @@ text is `standalone-ra-account-v1`'s own vocabulary, shared with Leaf and with
 the contract's fixtures, and a menu language is not the place to rename it.
 
 A leak check rides along with the drawing: with English set, a string carrying a
-Han character or a fullwidth form is one the table could not translate, so the
-player is about to read a row in the wrong language. A row drawn in the wrong
+Han character or a fullwidth form is a Chinese literal the sources should no
+longer hold, so the player is about to read a row in the wrong language. A row
+drawn in the wrong
 language looks exactly like one drawn in the right one, so the drawing counts
 these when the tests arm the check, and the menu test walks every page -- by
 row, into the slot page, into delete mode and through every value every row can
-hold -- and requires zero. `standalone/check-upstream-text.py` reads the UI text
+hold -- and requires zero.
+
+The other direction is not a thing the drawing can count. A string with no
+entry is drawn as the English it was written in, which on a Chinese screen is
+indistinguishable from a ROM title or a number that is meant to be English. It
+is answered statically instead: `standalone/check-tr-coverage.py` asks whether
+each English literal the sources can draw has a Chinese entry, and the coverage
+test in 0009 asks the same of every compiled settings row. Both fail the run,
+and both are what an upstream release is run against.
+
+`standalone/check-upstream-text.py` reads the UI text
 out of a pristine upstream tree and compares it with
 `standalone/localization.baseline.tsv` (490 entries at the pinned commit), so an
-upstream release that adds or rewords screen text stops the pack with exit 3
-rather than shipping a string nobody translated; `make check-upstream` runs
-that alone and `standalone/repack.sh` runs it before a pack.
+upstream release that adds or rewords screen text is visible as a list of the
+strings that are new rather than as a silent drift; it is run by hand after a
+release, and the numbers it reports are recorded in `upstream.lock.json` under
+`localization.check`.
 
 ## What the merge cost the table, and what now catches it
 
-The table is 287 zh/en pairs. It was 199 when 0007 wrote it, and the three-way
-merge into v3.0.0 lost 28 of the rows the later patches had added while keeping
-the call sites that read them. `tr_text` answers for the string it is handed, so
-a row whose entry is missing is not a row that draws a gap: it is a row that
-draws Chinese with English set, and the only thing that can tell the two apart
-is the leak counter, and only on a path the walk takes. Four kinds of string had
-lost their entries by then, and all four are fixed here rather than in a patch,
-because the tree they belong to is this one:
+The table is 315 English&rarr;Chinese pairs, keyed by the English the sources are
+written in. It was 287 zh/en pairs before the English baseline, and the three-way
+merge into v3.0.0 had already lost 28 of the rows the later patches had added
+while keeping the call sites that read them. `tr_text` answers for the string it
+is handed, so a row whose entry is missing is not a row that draws a gap: it is a
+row that draws English with Chinese set, and the only thing that can tell the two
+apart is the coverage check, which asks the table rather than the screen. Four
+kinds of string had lost their entries by then, and all four are fixed here
+rather than in a patch, because the tree they belong to is this one:
 
 - **Notes the settings tables carry.** A note reaches the canvas through
   `tr_text` only if the page asks for it, so it has no `tr_text` call of its own
@@ -255,8 +279,9 @@ because the tree they belong to is this one:
   note, from `video.screen_gap`, is the entry now.
 - **The Controls page's own key names.** Fifteen of `kExtras[].label` were
   written in Chinese and resolved nowhere, so the page that translates itself
-  was the one page whose rows stayed Chinese. They go through `tr_text` now,
-  where every other piece of the page's wording goes.
+  was the one page whose rows stayed Chinese. They are written in English now,
+  like every other piece of the page's wording, and go through `tr_text` with
+  the rest of it.
 - **A setting the merge kept.** `emu.fast_load` is a v2.1.1 key that v3.0.0
   dropped and nothing reads; the merge kept it because the v2.1.1 side had it
   and takes its CLI whitelist as a union. A switch that does nothing but be
@@ -264,16 +289,18 @@ because the tree they belong to is this one:
   v3.0.0's.
 
 `standalone/check-tr-coverage.py` is the guard. It reads the table and asks a
-specific question -- is *this* string in it -- rather than comparing sets, so it
-has no baseline to drift from, and it checks four kinds of site: `tr_text` with a
-string constant, `kActionLabels`, `kExtras`' label, and the string arguments of
-the settings helpers (`number`, `pick`, `boolean`). The last of those is what the
-first three miss, and it is what the two missing notes were missing from. A
-literal carrying Han with no entry fails the run in either direction: the same
-literal reached with Chinese set and no English entry draws English.
+specific question -- does *this* string have a Chinese -- rather than comparing
+sets, so it has no baseline to drift from, and it checks three kinds of site:
+`tr_text` with a string constant, `kActionLabels`, and `kExtras`' label. A
+literal carrying Han anywhere under `src/` fails it too, because after the
+English baseline that is a string the flip missed. The settings rows are the
+fourth kind and are left to the C++ test, which walks the compiled tables and so
+does not have to guess which of a helper's arguments is the label and which is
+an ini value.
 
-`make test-tr-coverage` runs it. `standalone/check-upstream-text.py` only ever
-saw `tr_text` call sites, so it could not see any of this either.
+`make test-tr-coverage` runs it, and so does `make check`. It is also the tool
+to reach for after an upstream release: it prints exactly the English strings
+that have no Chinese yet.
 
 The same thing happened one level up: `src/frontend/sdl/CMakeLists.txt` had lost
 `input.cpp` from its `add_executable`, which is upstream's own translation unit
@@ -400,7 +427,7 @@ highest glibc symbol version is `GLIBC_2.38`, the device's glibc.
 | --- | --- | --- |
 | Source | the pinned commit `1b76c35` plus `standalone/patches/0001-0010` applied in order | `standalone/notice/notice.c` (this repository) |
 | Licence | GPL-3.0-or-later | MIT |
-| sha256 | `328fb59e78709a31b33115b3c7d4c61fc99f891e2a5365a04143e9a97eb170cd` | `c52bf4d447c5c855dd02dfb24d8eef962a5d3d079c15b3e4438ae2a5df34a160` |
+| sha256 | `f38afcc4f0127876fd31507fe67ffa48ae3caa5613dcd65309e93cf7f1a0ed4f` | `c52bf4d447c5c855dd02dfb24d8eef962a5d3d079c15b3e4438ae2a5df34a160` |
 | Size | 5,472,016 bytes | 14,224 bytes |
 | Reproduced | two clean builds agreed byte for byte, less the PGO profile (below) | `FORCE=1` builds agreed byte for byte |
 
@@ -452,7 +479,7 @@ on the device separately; the SDL window-surface route remains the fallback.
 
 The v2.0.0 release checks below are retained as history. The v3.0.0 candidate
 this revision ships is host-verified only: the pinned commit plus the patch series builds to
-`328fb59e…` (5,472,016 bytes) with `SOURCE_DATE_EPOCH` pinned and
+`f38afcc4…` (5,472,016 bytes) with `SOURCE_DATE_EPOCH` pinned and
 `DSPERATE_CHEEVOS_VERSION=3.0.0`, `--version` reports `v3.0.0 (1b76c35)` from
 the lock's own exported identity, the device verification passes (AArch64,
 stripped, no RPATH, `GLIBC_2.38` ceiling, every `NEEDED` library on the MLP1

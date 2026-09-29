@@ -83,7 +83,16 @@ tail -n 1 "$WORK/bridge.log"
 
 # --- 4. source checks ------------------------------------------------------------
 added() { awk -v f="$1" '/^diff --git /{on = ($0 ~ f)} on && /^\+/' "$PATCH"; }
-MAIN="$(added 'src/frontend/sdl/main.cpp')"
+# The frontend's wiring is in main.cpp, and the series carries that file in
+# whichever patch owns it -- not necessarily 0005, whose own files are the
+# adapter's three. So these lines are collected across the whole series rather
+# than from one patch: what is being checked is what the patches put in the
+# tree, and they are applied as a series.
+MAIN=""
+for p in "$REPO_ROOT"/standalone/patches/*.patch; do
+  MAIN="$MAIN$(awk -v f='src/frontend/sdl/main.cpp' \
+    '/^diff --git /{on = ($0 ~ f)} on && /^\+/' "$p")"$'\n'
+done
 grep -q 'cfg.has("cheevos.enabled")' <<<"$MAIN" \
   || fail "the frontend does not look for an explicit cheevos.enabled before import()"
 grep -q 'ra_account::import(cheevos_setting && !cheevos_setting_on)' <<<"$MAIN" \
