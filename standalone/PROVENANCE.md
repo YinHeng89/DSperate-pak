@@ -12,44 +12,35 @@ Everything here is measured from the build, not from memory.
 | Commit | `1b76c355109c9f7576363ccc023927b3137d3c6f` |
 | Licence | GPL-3.0-or-later (`LICENSE`) |
 | Pak base | `cfb037e` (`v2.1.1`, merge of PR #6) &mdash; the released pak the Chinese series started from |
-| Source tree | sha256 `f3e147b0e1d6be102e2c8656e7fdaeafb9792309738fcea767663fb15c86e7fa` &mdash; a `SOURCE_DATE_EPOCH`-deterministic tar of the merged tree; it pins the exact source this binary was built from |
-| Patches | `patches/0001-pak-cache-and-archive-policy.patch`, `patches/0002-save-durability.patch`, `patches/0003-lid-resume-no-fabricated-close.patch`, `patches/0004-deterministic-version.patch`, `patches/0005-dsperate-ra-account-adapter.patch`, `patches/0006-chinese-localization.patch`, `patches/0007-zh-menu-and-ui-language.patch`, `patches/0008-cjk-drawing.patch`, `patches/0009-english-rows-through-tr-text.patch`, `patches/0010-rest-of-the-menu-in-the-set-language.patch`, `patches/0011-face-pips-that-follow-the-pad-own-naming.patch` and `patches/0012-achievement-status-in-the-set-language.patch` (the v2.1.1 series, sha256-locked; see below) |
+| Build | the pinned commit above, with `standalone/patches/0001-0010` applied in order (each sha256-locked); see the table below |
+| Patches | `patches/0001-pak-cache-and-archive-policy.patch`, `patches/0002-save-durability.patch`, `patches/0003-lid-resume-no-fabricated-close.patch`, `patches/0004-deterministic-version.patch`, `patches/0005-dsperate-ra-account-adapter.patch`, `patches/0006-chinese-localization.patch`, `patches/0007-zh-menu-and-ui-language.patch`, `patches/0008-cjk-drawing.patch`, `patches/0009-english-rows-through-tr-text.patch` and `patches/0010-face-pips-that-follow-the-pad-own-naming.patch` (the v3.0.0 series, re-anchored and sha256-locked; see below) |
 
-## Patches, and why v3.0.0 is not them
+## Patches are the v3.0.0 build
 
-The 12 patches are locked by sha256 in `upstream.lock.json`. For v2.1.1 they
-were the build: the pinned commit plus the series, applied in order, and the
-build refused a patch whose hash differed.
-
-They are not the v3.0.0 build. Upstream v3.0.0 moved `text_width`,
-`draw_text`, the settings tables and the version generator, and the series does
-not apply cleanly to it. What the v3.0.0 binary is built from is a three-way
-merge of the v2.1.1-patched tree against pristine v3.0.0, with about 29
-conflict blocks resolved by hand (the settings page losing the CPU TUNING rows
-v3.0.0 deleted, the menu's widest-row constant measured against the Chinese
-string, the CLI whitelist taking the union of both sides). The v2.1.1 series is
-kept in `patches/` and still locked, because it is what the v2.1.1 record and
-`history[0]` describe; it does not produce this artifact. The artifact's source
-is pinned instead by the source-tree sha256 above, from a deterministic tar of
-the merged tree.
+The ten patches are locked by sha256 in `upstream.lock.json`. They _are_ the
+build: `build-dsperate.sh` clones the pinned commit, resets to it, and applies
+the series in order, and the build refuses a patch whose hash differs. The
+v2.1.1 series did not apply to v3.0.0 (upstream moved `text_width`,
+`draw_text`, the settings tables and the version generator), so it was rebased
+and re-anchored onto v3.0.0; the original v2.1.1 patches are kept under
+`standalone/patches-legacy-v2.1.1/` for the audit trail and do not produce this
+artifact.
 
 Reviewed against [upstream v3.0.0](https://github.com/beebono/DSperate/releases/tag/v3.0.0)
 on 2026-09-28:
 
 | Patch | Decision |
 | --- | --- |
-| 0001 archive/cache policy | Keep and rebase. v2.1.1 renamed `find_nds` to `find_rom` and widened the entry kinds to `.nds/.dsi/.srl/.cia`; the cache-root, single-entry and unsafe-path policies are still absent upstream, so they are re-expressed against `find_rom`. |
-| 0002 save durability | Keep. Re-anchored onto v2.1.1's larger SDL frontend; checked writes and firmware flush/close are unchanged. |
-| 0003 lid/resume | Keep. v2.1.1's lid implementation is unchanged and still fabricates a close on a device with no switch. |
+| 0001 archive/cache policy | Keep and rebase. The cache-root, single-entry and unsafe-path policies are still absent upstream, so they are re-expressed against `find_rom` on v3.0.0. |
+| 0002 save durability | Keep and rebase. Checked writes and firmware flush/close are unchanged. |
+| 0003 lid/resume | Keep and rebase. v3.0.0's lid implementation is unchanged and still fabricates a close on a device with no switch. |
 | 0004 deterministic `--version` | New. Prefers the lock's tag and commit over git so a source archive and a patched checkout report the same identity. |
 | 0005 Leaf account adapter | New. The `standalone-ra-account-v1` consumer; upstream has no equivalent. |
 | 0006 CJK face | New. A WenQuanYi Micro Hei subset and the text layer that draws it; no UI string is touched. |
-| 0007 Chinese menu and UI language | New. 199 zh/en pairs, the literals, and the `ui.language` switch that selects them. |
+| 0007 Chinese menu and UI language | New. 199 zh/en pairs, the literals, and the `ui.language` switch that selects them; this patch also folds in the remaining menu rows and the account-page status line that the v2.1.1 series had split into 0010 and 0012. |
 | 0008 CJK drawing | New. Routes the drawing path through 0006's face, which is what makes a Chinese row readable. |
 | 0009 English rows through `tr_text` | New. The rows that format before they translate, so English mode stops drawing Chinese. |
-| 0010 Rest of the menu | New. Every remaining setting value and controls label, and three more places with 0009's ordering fault. |
-| 0011 Face pips | New. Points the controls page's diamond pips at the button the pad's own naming binds. |
-| 0012 Achievement status | New. The account page's status line, resolved before it is joined to a name or wrapped. |
+| 0010 Face pips | New. Points the controls page's diamond pips at the button the pad's own naming binds (v2.1.1's 0011). |
 
 `standalone/patches/0001-pak-cache-and-archive-policy.patch` adds the pak's
 archive policy.
@@ -123,7 +114,7 @@ names are rejected regardless of those flags.
 
 ## Chinese (Simplified) menu
 
-Six patches add a second UI language and the face to draw it in. They are
+Five patches add a second UI language and the face to draw it in. They are
 proposals to upstream as much as the rest of the series: nothing in them is
 reachable unless `ui.language` is set to `zh`, English is the default, and
 every English string the menu could draw before still draws byte for byte.
@@ -174,7 +165,7 @@ through `tr_text` before `snprintf`. The options page's widest-row measurement
 goes through it too: it measured the Chinese and drew the English, which is a
 panel too narrow for the row it holds.
 
-`standalone/patches/0010-rest-of-the-menu-in-the-set-language.patch` keys the
+`standalone/patches/0007-zh-menu-and-ui-language.patch` keys the
 rest of the menu's own text in the language the table resolves: the settings
 values that were still English in Chinese, the sentinels on fast forward and
 the picture-in-picture hold, and every label the Controls page puts on a row --
@@ -192,7 +183,7 @@ it is the longest line on the page: it did not fit the buffer, and `snprintf`
 cuts at a byte, so the row ended inside a character; the buffer is named now and
 held against the longest form by a `static_assert`.
 
-`standalone/patches/0011-face-pips-that-follow-the-pad-own-naming.patch`
+`standalone/patches/0010-face-pips-that-follow-the-pad-own-naming.patch`
 separates the two meanings of "x" on the MLP1 pad. The diamond pips on the
 controls page are places, and the pad's own mapping is not: the MLP1 names its
 face buttons by the letter printed on them, so its SDL `x` sits at the top of
@@ -217,7 +208,7 @@ to 6, migrated as `pad.face_fix = off`, which leaves the explicit binding as
 the only half in play. A player who sets `face_fix = auto` themselves keeps it:
 the migration only seeds a key that is missing.
 
-`standalone/patches/0012-achievement-status-in-the-set-language.patch` does the
+`standalone/patches/0007-zh-menu-and-ui-language.patch` does the
 same for the account page's status line, which 0005 rewrote. The page wraps
 that line to the panel, so what reaches `draw_text` is a fragment and never the
 whole sentence, and a name or a hash joined onto the end is no more an entry
@@ -351,73 +342,29 @@ CMake configuration (see `standalone/build-in-container.sh`):
 | `DSPERATE_NET` | `ON` | upstream default; vendored ENet and libslirp are linked statically; network sessions default off |
 | `CMAKE_CXX_FLAGS` | `-DSDL_VIDEO_DRIVER_WAYLAND=1` | exposes `SDL_SysWMinfo`'s Wayland fields so the dmabuf tier compiles (see below) |
 | `DSPERATE_WAYLAND` | `ON` | build the Wayland dmabuf tier; the build fails rather than substituting the stub |
-| `DSPERATE_CHEEVOS_VERSION` | `2.1.1` | passed explicitly; a shallow checkout has no tags for upstream's `git describe` fallback |
-| `DSPERATE_PGO` | `use` | consume the pak's own trained aarch64 profile (see below) |
-| `DSPERATE_PGO_DIR` | `/standalone/pgo/aarch64` | the locked profile; `build-dsperate.sh` verifies its sha256 before the build |
-| `DSPERATE_PGO_STRICT` | `ON` | keeps GCC's missing-profile and coverage-mismatch warnings; the build counts them and fails (see below) |
+| `DSPERATE_CHEEVOS_VERSION` | `3.0.0` | passed explicitly; a shallow checkout has no tags for upstream's `git describe` fallback |
+| `DSPERATE_PGO` | `off` | no profile fits this toolchain (see below); plain `-O2` |
 
 `SOURCE_DATE_EPOCH` is the pinned commit's committer timestamp
-(`1789871851`). `DSPERATE_LOCK_VERSION=v2.1.1` and
-`DSPERATE_LOCK_COMMIT=baec965` are exported from the lock so `--version` is
+(`1790447090`). `DSPERATE_LOCK_VERSION=v3.0.0` and
+`DSPERATE_LOCK_COMMIT=1b76c35` are exported from the lock so `--version` is
 deterministic.
 
 ## Profile-guided optimisation
 
 **This build has no PGO profile.** Upstream v3.0.0 ships profiles trained by
 GCC 13.3.0; the MLP1 toolchain is Buildroot GCC 12.3.0, and CMake's fingerprint
-check refuses the mismatch (profile 13.3.0, this build `2d22e81d`, recorded as
-`pgo.build_fingerprint` in the lock), so the
-v3.0.0 build runs with `-DDSPERATE_PGO=off` and plain `-O2`. That is a
-performance difference and not a correctness one, but it is a real one: the
-emulator was measurably faster under the retrained profile on v2.1.1, and no
-performance claim is made for this candidate. Training a profile against the
-v3.0.0 source needs eight ROM play sessions on the device and a profile that
-survives a tree this repository does not produce by patching; until that
-exists, the honest setting is off, and `upstream.lock.json` says so with
-`pgo.state = "none"` rather than quietly dropping the field. The v2.1.1
-profile, and what training it took, is recorded below and in
-`history[0].pgo`.
-
-The build consumes a PGO profile trained with **this same toolchain** (Buildroot
-GCC 12.3.0) and these same flags, against the patched v2.1.1 source. Upstream
-v2.1.1 ships profiles for GCC 10.5 and 12.4.0 only; CMake's fingerprint check
-refuses those, and a `.gcda` is bound to the compiler that wrote it, so they
-cannot be used here. The profile was retrained for the port rather than carried
-from v2.0.0, whose profile is tied to the v2.0.0 source. The profile in this revision
-was retrained over the tree with patch 0005 applied (MANIFEST date
-2026-09-21T20:20Z). The adapter's code sits in the never-trained achievement
-and SDL frontend groups, so a later change to it leaves every trained object's
-profile valid. The strict gate checks that on every build.
-
-How the profile was produced (see `standalone/pgo/aarch64/MANIFEST`):
-
-- an instrumented headless build (`-DDSPERATE_PGO=generate`) configured with the
-  release flags, whose `pgo-fingerprint` matched the release build's
-  (`e5053f2d1f5b27e9ed70bda94b614845979aa599`);
-- seven of upstream's recorded scenes (`mlbis sm64 etody dbori meteos gsdd
-  nsmb`), with the real BIOS and firmware. `st` is absent because the recorded
-  save state is for another ROM revision, which the loader refuses;
-- the resulting `.gcda` files, the `MANIFEST`, and a sha256 over the whole
-  directory, pinned in `upstream.lock.json`. The build refuses a profile whose
-  directory hash does not match the lock, and CMake refuses one whose compiler
-  or flags (the MANIFEST fingerprint) do not match the build.
-
-Verification is part of every build. The release build itself runs with
-`-DDSPERATE_PGO_STRICT=ON`, and `build-in-container.sh` counts the warnings the
-same way upstream's `tools/pgo_refresh.sh` does: it fails if any object outside
-the never-trained groups (the SDL frontend, rcheevos and the achievement code,
-the standalone tools, miniz, the reference kernels) has no profile, if any
-function's control flow no longer matches its profile, or if no strict warning
-appears at all. The current build reports 49 objects without a profile, all in
-those groups (the adapter's two new files and the CJK face among them), and 0
-mismatches. The six localization patches touch only the SDL frontend and its
-tests, which are in those groups too, so the retrained profile stays valid. The strict flags are warning switches only; the
-binary is byte-identical to the non-strict build. `make test-pgo` checks,
-without a build or a device, that the profile directory, its MANIFEST and the
-build flags match the lock. Two clean `FORCE=1` builds with the locked profile
-agree byte for byte.
-Device performance of this candidate must be re-measured before any claim; no
-measurement of the retrained profile exists yet.
+check refuses the mismatch (recorded as `pgo.build_fingerprint` in the lock), so
+the build runs with `-DDSPERATE_PGO=off` and plain `-O2`. That is a performance
+difference and not a correctness one: the emulator was measurably faster under
+the retrained profile on v2.1.1, and no performance claim is made for this
+candidate. Training a profile against the v3.0.0 source needs ROM play sessions
+on the device and a profile that survives a source this repository produces by
+patching; until that exists, the honest setting is off, and
+`upstream.lock.json` records it with `pgo.state = "none"` rather than dropping
+the field. The v2.1.1 profile this pak trained is in `history[0].pgo` for the
+audit trail and does not apply here. `make test-pgo` checks, without a build or a
+device, that the build flags match the lock's `pgo` record.
 
 ## Archives
 
@@ -429,7 +376,7 @@ Entries are sorted, every timestamp is `SOURCE_DATE_EPOCH`, owner and group are
 gzip header has no name or timestamp. `make test-archives` builds both twice
 with every input's mtime and the umask changed in between and requires the
 same sha256. `make test-version` extracts the source archive, rebuilds from it
-with no git, and requires the locked binary and `DSperate v2.1.1 (baec965)`.
+with no git, and requires the locked binary and `DSperate v3.0.0 (1b76c35)`.
 
 ## Linkage
 
@@ -451,7 +398,7 @@ highest glibc symbol version is `GLIBC_2.38`, the device's glibc.
 
 | | `bin/dsperate` | `bin/dsperate-notice` |
 | --- | --- | --- |
-| Source | the merged tree pinned by the source-tree sha256 above | `standalone/notice/notice.c` (this repository) |
+| Source | the pinned commit `1b76c35` plus `standalone/patches/0001-0010` applied in order | `standalone/notice/notice.c` (this repository) |
 | Licence | GPL-3.0-or-later | MIT |
 | sha256 | `328fb59e78709a31b33115b3c7d4c61fc99f891e2a5365a04143e9a97eb170cd` | `c52bf4d447c5c855dd02dfb24d8eef962a5d3d079c15b3e4438ae2a5df34a160` |
 | Size | 5,472,016 bytes | 14,224 bytes |
@@ -504,7 +451,7 @@ on the device separately; the SDL window-surface route remains the fallback.
 ## Verification status
 
 The v2.0.0 release checks below are retained as history. The v3.0.0 candidate
-this revision ships is host-verified only: the merged tree builds to
+this revision ships is host-verified only: the pinned commit plus the patch series builds to
 `328fb59e…` (5,472,016 bytes) with `SOURCE_DATE_EPOCH` pinned and
 `DSPERATE_CHEEVOS_VERSION=3.0.0`, `--version` reports `v3.0.0 (1b76c35)` from
 the lock's own exported identity, the device verification passes (AArch64,

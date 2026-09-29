@@ -2,5 +2,4 @@ build/
 *.pyc
 __pycache__/
 .DS_Store
-/zh_CN
 /.workbuddy

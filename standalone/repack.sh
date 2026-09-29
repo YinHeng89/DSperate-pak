@@ -21,7 +21,7 @@
 #
 # Exit codes:
 #   0  packed
-#   3  upstream text moved; translate into 0005 and rerun
+#   3  upstream text moved; translate into the localization patches (0006-0010) and rerun
 #   4  the pinned upstream ref no longer exists upstream
 #   5  no baseline recorded yet, or the scanner version changed
 #   6  a build or packaging step failed
@@ -217,7 +217,7 @@ run_check() {
       echo
       say "upstream moved its UI text. Translating it is manual work:"
       say "  take each '+ string' above into tr_data.inc and the literals in"
-      say "  menu.cpp / settings.cpp, regenerate 0005, then rerun this script."
+      say "  menu.cpp / settings.cpp, regenerate 0007, then rerun this script."
       exit 3 ;;
     5) EXIT_CODE=5 die "no usable baseline at $BASELINE" ;;
     *) EXIT_CODE="$rc" die "check-upstream-text.py failed ($rc)" ;;
