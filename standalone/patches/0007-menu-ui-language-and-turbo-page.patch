@@ -1,5 +1,5 @@
 diff --git a/src/frontend/sdl/main.cpp b/src/frontend/sdl/main.cpp
-index 61766f0..0030fe4 100644
+index 792c628..8099a52 100644
 --- a/src/frontend/sdl/main.cpp
 +++ b/src/frontend/sdl/main.cpp
 @@ -29,6 +29,7 @@
@@ -252,7 +252,7 @@ index 61766f0..0030fe4 100644
    const std::string bios9 = cfg.str("paths.bios9"), bios7 = cfg.str("paths.bios7");
    const std::string dsi_fw = cfg.str("paths.dsi_firmware");
    const bool have_dsi_fw = !dsi_fw.empty() && std::filesystem::exists(dsi_fw);
-@@ -1567,6 +1661,8 @@ sdl_ready:
+@@ -1568,6 +1662,8 @@ sdl_ready:
      ds::cart::RomSource::set_preload(pl == "true" || pl == "on" || pl == "1" ? ds::cart::RomSource::Preload::On : pl == "false" || pl == "off" || pl == "0" ? ds::cart::RomSource::Preload::Off : ds::cart::RomSource::Preload::Auto);
    }
    nds.rom_cache_dir = cfg.str("paths.cache", "");
@@ -261,7 +261,7 @@ index 61766f0..0030fe4 100644
    nds.rom_cache_max_bytes = static_cast<u64>(std::max(0, cfg.num("cart.cache_mb", 2048))) << 20;
    const bool cache_session = cfg.str("cart.cache", "keep") == "session";
    // Every unpacked image goes except the one this launch is about to use.
-@@ -2200,8 +2296,11 @@ sdl_ready:
+@@ -2203,8 +2299,11 @@ sdl_ready:
        const char* key = extra_key(e, pad);
        const std::string v = cfg.str(key, extra_default(key, pad, cfg));
        if (extra_is_axis_remap(key)) return axis_remap_label(v);
@@ -274,7 +274,7 @@ index 61766f0..0030fe4 100644
        return pad ? ds::sdl::Input::pad_label(v) : upper(v);
      }
  
-@@ -2225,14 +2324,16 @@ sdl_ready:
+@@ -2228,14 +2327,16 @@ sdl_ready:
            if (k >= extra_count(pad)) return out;   // past the end: no row
            const Extra& e = extra_at(pad, k);
            out.key = extra_key(e, pad);
@@ -294,7 +294,7 @@ index 61766f0..0030fe4 100644
          out.value = hot_value(pad, a, slot);
        }
        // Display only: the file keeps SDL's lower-case names; pad values also
-@@ -2403,7 +2504,9 @@ sdl_ready:
+@@ -2406,7 +2507,9 @@ sdl_ready:
        switch (s.depends) {
        case ds::sdl::Dep::None: return "";
        case ds::sdl::Dep::FrameskipMode:
@@ -305,7 +305,7 @@ index 61766f0..0030fe4 100644
          if (net_live && *net_live) return "NOT DURING A NETWORK SESSION";
          return cfg.num("emu.frameskip", 0) > 0 ? "" : "ONLY WITH FRAMESKIP ON";
        case ds::sdl::Dep::PanelEffects:
-@@ -2421,9 +2524,11 @@ sdl_ready:
+@@ -2424,9 +2527,11 @@ sdl_ready:
          if (flag("video.linear", false)) return "BILINEAR IS ON";
          return cfg.str("video.chunky", "false") == "false" ? "ONLY WITH CHUNKY ON" : "";
        case ds::sdl::Dep::Windowed:
@@ -318,7 +318,7 @@ index 61766f0..0030fe4 100644
          return vs.dual_window ? "NOT WITH TWO WINDOWS" : "";
        case ds::sdl::Dep::Pip:
          return pip ? "" : "PIP LAYOUT ONLY";
-@@ -2442,12 +2547,16 @@ sdl_ready:
+@@ -2445,12 +2550,16 @@ sdl_ready:
          return "THIS BUILD HAS NO NETWORKING";
  #endif
        case ds::sdl::Dep::NetInternet:
@@ -336,7 +336,7 @@ index 61766f0..0030fe4 100644
        }
        return "";
      }
-@@ -2516,6 +2625,9 @@ sdl_ready:
+@@ -2519,6 +2628,9 @@ sdl_ready:
      if (is("video.gpu_present")) { host.reopen_wanted = true; return; }
      if (is("video.fps")) { fps_osd = on; if (on && !show_fps) { fps_mark = SDL_GetPerformanceCounter(); emu_ticks = draw_ticks = wait_ticks = 0; } return; }
      if (is("video.pip_touch_hold")) { pip_touch_hold = std::max(0, std::atoi(v.c_str())); return; }
@@ -346,7 +346,7 @@ index 61766f0..0030fe4 100644
      // Everything below moves the picture, so it's applied on menu close (Host::commit).
      if (is("video.fullscreen")) { host.fullscreen_wanted = true; return; }
      if (is("video.layout_cycle")) {
-@@ -2581,7 +2693,18 @@ sdl_ready:
+@@ -2584,7 +2696,18 @@ sdl_ready:
    // RetroAchievements, Casual mode. Off unless asked for; every failure is
    // reported once and then ignored.
    ds::cheevos::Client cheevos;
@@ -366,7 +366,7 @@ index 61766f0..0030fe4 100644
  #endif
  #if DSPERATE_NET
    std::unique_ptr<ds::net::LanMp> lan;
-@@ -2775,7 +2898,11 @@ sdl_ready:
+@@ -2778,7 +2901,11 @@ sdl_ready:
        // toast, which is drawn onto the canvas afterwards.
        if (m.kind == ds::cheevos::Message::Kind::Unlock && cfg.flag("cheevos.auto_screenshot", false))
          shot_pending = true;
@@ -379,7 +379,7 @@ index 61766f0..0030fe4 100644
        Toast t;
        t.header = m.kind == ds::cheevos::Message::Kind::Unlock ? "ACHIEVEMENT UNLOCKED"
                 : m.kind == ds::cheevos::Message::Kind::Problem ? "RETROACHIEVEMENTS" : nullptr;
-@@ -2797,21 +2924,48 @@ sdl_ready:
+@@ -2800,21 +2927,48 @@ sdl_ready:
        sum = c->summary();
      }
      std::string status() const override {
@@ -438,7 +438,7 @@ index 61766f0..0030fe4 100644
      }
      std::string progress() const override {
        if (!c || sum.total == 0) return {};
-@@ -2943,8 +3097,31 @@ sdl_ready:
+@@ -2946,8 +3100,31 @@ sdl_ready:
        // A password is never kept; an expired token fails and the player
        // signs in again from the menu.
        ds::cheevos::Credentials creds;
@@ -472,7 +472,7 @@ index 61766f0..0030fe4 100644
        const std::string token_file = cfg.str("cheevos.token_file");
        if (!token_file.empty()) {
          if (!ds::cheevos::read_token_file(token_file, creds, err)) {
-@@ -2972,6 +3149,7 @@ sdl_ready:
+@@ -2975,6 +3152,7 @@ sdl_ready:
        }
        if (!creds.empty()) cheevos.sign_in_with_token(creds.username, creds.token);
        else std::fprintf(stderr, "cheevos: not signed in\n");

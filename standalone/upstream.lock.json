@@ -4,11 +4,11 @@
   "core": {
     "id": "dsperate",
     "source_url": "https://github.com/beebono/DSperate.git",
-    "source_tag": "v3.0.0",
-    "source_commit": "1b76c355109c9f7576363ccc023927b3137d3c6f",
+    "source_tag": "main",
+    "source_commit": "f5fa35ea19f966543feae086798701f134d89619",
     "license": "GPL-3.0-or-later",
     "license_path_in_source": "LICENSE",
-    "note": "v3.0.0 source = the pinned upstream commit (1b76c35) with the patch series in patches/ applied. The v2.1.1 series did not apply to v3.0.0, so it was rebased and re-anchored; the original v2.1.1 patches are kept under standalone/patches-legacy-v2.1.1/ for the audit trail."
+    "note": "source = the pinned upstream commit (f5fa35e), 9 commits past v3.0.0, with the patch series in patches/ applied. The v2.1.1 series did not apply to v3.0.0, so it was rebased and re-anchored; the original v2.1.1 patches are kept under standalone/patches-legacy-v2.1.1/ for the audit trail."
   },
   "build": {
     "backend": "sdl",
@@ -16,8 +16,8 @@
     "wayland_define": "-DSDL_VIDEO_DRIVER_WAYLAND=1",
     "wayland_note": "The toolchain sysroot's SDL2 2.28.5 is built without its Wayland driver, so its SDL_config.h leaves SDL_VIDEO_DRIVER_WAYLAND undefined and SDL_syswm.h hides SDL_SysWMinfo's Wayland fields. Defining the macro for this build exposes those fields without changing the toolchain, and is what lets the intended dmabuf tier compile. The public union reserves the fields' space regardless, and the binary links the device's Wayland-capable SDL at runtime. The build fails if the probe or display_wl.cpp does not confirm the real tier.",
     "language": "C++17, upstream CMake/Ninja build",
-    "source_date_epoch": 1790447090,
-    "source_date_note": "The pinned v3.0.0 commit's committer timestamp (1b76c35, 2026-09-26T13:24:50-05:00).",
+    "source_date_epoch": 1791414282,
+    "source_date_note": "The pinned f5fa35e (main, 9 commits past v3.0.0) commit's committer timestamp (f5fa35e, 2026-10-07T18:04:42-05:00).",
     "cheevos_version": "3.0.0",
     "cheevos_version_note": "Passed explicitly because a shallow checkout's `git describe` fallback is not the one upstream would take; the value is the release tag, which is what DSperate reports to RetroAchievements in its User-Agent.",
     "pgo": "off",
@@ -45,8 +45,8 @@
   },
   "version": {
     "tag": "v3.0.0",
-    "commit": "1b76c35",
-    "note": "Locked --version identity. The build exports DSPERATE_LOCK_VERSION and DSPERATE_LOCK_COMMIT, and cmake/version.cmake prefers them over git, so a source archive without git, and a patched checkout git would call dirty, both report v3.0.0 (1b76c35). Without those two the merged tree reports the same tag but the short HEAD hash plus -dirty, because the merge lives in the working tree; the exported pair is what makes the string stable."
+    "commit": "f5fa35e",
+    "note": "Locked --version identity. The build exports DSPERATE_LOCK_VERSION and DSPERATE_LOCK_COMMIT, and cmake/version.cmake prefers them over git, so a source archive without git, and a patched checkout git would call dirty, both report v3.0.0 (f5fa35e). Without those two the merged tree reports the same tag but the short HEAD hash plus -dirty, because the merge lives in the working tree; the exported pair is what makes the string stable."
   },
   "history": [
     {
@@ -67,52 +67,52 @@
     {
       "file": "0001-pak-cache-and-archive-policy.patch",
       "sha256": "5e794d8784ee6e45bb3c9fea85988daddaec8c71eef099ce79a16436a5fe02aa",
-      "note": "Adds --cache-root-only, --single-rom and --inspect-cart, backed by cart.cache_root_only and cart.single_nds, plus unsafe entry-path rejection. Rebased onto v3.0.0; the cache/archive policy features are still absent upstream, so they are carried. The pak's wrapper pins the extraction cache to its own root, requires exactly one image entry, and sizes the cache before launch."
+      "note": "Adds --cache-root-only, --single-rom and --inspect-cart, backed by cart.cache_root_only and cart.single_nds, plus unsafe entry-path rejection. Rebased onto f5fa35e (main, 9 commits past v3.0.0); the cache/archive policy features are still absent upstream, so they are carried. The pak's wrapper pins the extraction cache to its own root, requires exactly one image entry, and sizes the cache before launch."
     },
     {
       "file": "0002-save-durability.patch",
       "sha256": "eb6beee6a23f3dd9690b588665304b10a5d18f0b2683d1ae9310b58b2a416925",
-      "note": "Keeps checked flush, fsync, close and rename for battery-save and save-state writes. Retains upstream save loading, chip detection and mismatch backups. Rebased onto v3.0.0."
+      "note": "Keeps checked flush, fsync, close and rename for battery-save and save-state writes. Retains upstream save loading, chip detection and mismatch backups. Rebased onto f5fa35e (main, 9 commits past v3.0.0)."
     },
     {
       "file": "0003-lid-resume-no-fabricated-close.patch",
       "sha256": "5e84de2a16e88b19994ffe94894ab4ff10954724ef18925862986504cd551954",
-      "note": "Stops the host-resume lid pulse on a device with no lid switch. The old code fabricated a lid close/open cycle on every resume; the pulse now only fires for a lid already believed closed. Rebased onto v3.0.0."
+      "note": "Stops the host-resume lid pulse on a device with no lid switch. The old code fabricated a lid close/open cycle on every resume; the pulse now only fires for a lid already believed closed. Rebased onto f5fa35e (main, 9 commits past v3.0.0)."
     },
     {
       "file": "0004-deterministic-version.patch",
       "sha256": "fc2cdbf8b04abc2af4423f2bca6b9dfc31c83db3def752b3fa21317c36da9bec",
-      "note": "Makes --version report the lock's tag and commit deterministically via DSPERATE_LOCK_VERSION / DSPERATE_LOCK_COMMIT, so a source archive without git and a patched checkout both report v3.0.0 (1b76c35)."
+      "note": "Makes --version report the lock's tag and commit deterministically via DSPERATE_LOCK_VERSION / DSPERATE_LOCK_COMMIT, so a source archive without git and a patched checkout both report v3.0.0 (f5fa35e)."
     },
     {
       "file": "0005-dsperate-ra-account-adapter.patch",
       "sha256": "b07b262cbd8a91f117086af119b58f8beb2e5090deb40dbc4a8ee6eae8f55415",
-      "note": "The standalone-ra-account-v1 consumer (Leaf account adapter): shared contract classifier/marker, managed-account bridge with checked token writer, and native login wiring. Captures and scrubs UMRK_RA_ACCOUNT_* at startup; never writes a password or token to a log or argv. Rebased onto v3.0.0."
+      "note": "The standalone-ra-account-v1 consumer (Leaf account adapter): shared contract classifier/marker, managed-account bridge with checked token writer, and native login wiring. Captures and scrubs UMRK_RA_ACCOUNT_* at startup; never writes a password or token to a log or argv. Rebased onto f5fa35e (main, 9 commits past v3.0.0)."
     },
     {
       "file": "0006-chinese-localization.patch",
       "sha256": "5bad4e343bc16e552c6099026f0b251f118112b350acf82a7f3804fe52f3bbf6",
-      "note": "The Chinese overlay and the i18n framework: stb_truetype plus a WenQuanYi Micro Hei subset embedded in font_cn_data.inc, i18n.h, and tr_data.inc -- 315 English->Chinese pairs keyed by the English the sources are written in. English mode draws the key unchanged and never consults the table; Chinese mode resolves it. Built by tools/make_menu_font.py. No UI string is touched by this patch alone. Rebased onto v3.0.0."
+      "note": "The Chinese overlay and the i18n framework: stb_truetype plus a WenQuanYi Micro Hei subset embedded in font_cn_data.inc, i18n.h, and tr_data.inc -- 315 English->Chinese pairs keyed by the English the sources are written in. English mode draws the key unchanged and never consults the table; Chinese mode resolves it. Built by tools/make_menu_font.py. No UI string is touched by this patch alone. Rebased onto f5fa35e (main, 9 commits past v3.0.0)."
     },
     {
       "file": "0007-menu-ui-language-and-turbo-page.patch",
-      "sha256": "f4d2029257fed4781eafcf98a07f49dea71b4c7c08e75b76b1f9ac59a9e4b587",
-      "note": "The menu itself, written in English: the rows in menu.cpp/settings.cpp/main.cpp, the Turbo (连发) page this pak adds -- input.turbo, its mode and rate and one checkbox per DS button, on Page::Turbo -- and the switch that selects a language. draw_text and text_width resolve every string through tr_text, so one setting flips the whole menu; the Chinese it resolves to lives in 0006's table. Adds a UI LANGUAGE row on OPTIONS (ui.language, persisted, distinct from user.language). Rebased onto v3.0.0."
+      "sha256": "55b399c2d07e47b4d6a7896148348c48cf3ba3d0f7957a960a816ca60cd4a63a",
+      "note": "The menu itself, written in English: the rows in menu.cpp/settings.cpp/main.cpp, the Turbo (连发) page this pak adds -- input.turbo, its mode and rate and one checkbox per DS button, on Page::Turbo -- and the switch that selects a language. draw_text and text_width resolve every string through tr_text, so one setting flips the whole menu; the Chinese it resolves to lives in 0006's table. Adds a UI LANGUAGE row on OPTIONS (ui.language, persisted, distinct from user.language). Rebased onto f5fa35e (main, 9 commits past v3.0.0)."
     },
     {
       "file": "0008-cjk-drawing.patch",
       "sha256": "e214966c23a929ca0852e54b10a9219dcabf3ad56deb82f8183f6baf9dd4221a",
-      "note": "Wires 0006's face into the drawing path so a Chinese row is readable; text_width and draw_text share step_for. Regenerates font_cn_data.inc against the current strings, which after the English baseline means the Chinese in tr_data.inc rather than the sources. Rebased onto v3.0.0."
+      "note": "Wires 0006's face into the drawing path so a Chinese row is readable; text_width and draw_text share step_for. Regenerates font_cn_data.inc against the current strings, which after the English baseline means the Chinese in tr_data.inc rather than the sources. Rebased onto f5fa35e (main, 9 commits past v3.0.0)."
     },
     {
       "file": "0009-menu-tests.patch",
       "sha256": "76a33f1188760dc5575c4c1c052d825367f6ca0ebd0d67a8dd424f91d51eb0b2",
-      "note": "The C++ menu tests: the page walk, the strict leak count, and the coverage test that walks every compiled settings table in Chinese mode and asks for each row's label, note and choice. That last one is what answers, exactly, whether a row has its Chinese -- which no regex over the sources can, because a helper's arguments do not say which is the label and which is an ini value. Rebased onto v3.0.0."
+      "note": "The C++ menu tests: the page walk, the strict leak count, and the coverage test that walks every compiled settings table in Chinese mode and asks for each row's label, note and choice. That last one is what answers, exactly, whether a row has its Chinese -- which no regex over the sources can, because a helper's arguments do not say which is the label and which is an ini value. Rebased onto f5fa35e (main, 9 commits past v3.0.0)."
     },
     {
       "file": "0010-face-pips-that-follow-the-pad-own-naming.patch",
       "sha256": "e4f30af7c6eeb6281c107f45e97d6d221c6adc42426f11ffd6302537747332d2",
-      "note": "The controls-page diamond pips follow the pad's own x/y naming (MLP1 prints x at top, y at left); a pad.xy_naming key plus migration selects the orientation. Rebased onto v3.0.0."
+      "note": "The controls-page diamond pips follow the pad's own x/y naming (MLP1 prints x at top, y at left); a pad.xy_naming key plus migration selects the orientation. Rebased onto f5fa35e (main, 9 commits past v3.0.0)."
     }
   ],
   "toolchain": {
@@ -128,9 +128,9 @@
   },
   "artifact": {
     "file_name": "dsperate",
-    "sha256": "f38afcc4f0127876fd31507fe67ffa48ae3caa5613dcd65309e93cf7f1a0ed4f",
-    "size_bytes": 5472016,
-    "note": "Recorded after the build described by this lock: the pinned commit (1b76c35) plus the patch series (0001-0010) applied in order, SOURCE_DATE_EPOCH pinned to 1b76c35's committer time, -DDSPERATE_CHEEVOS_VERSION=3.0.0, no PGO, then $CROSS-strip --strip-unneeded, which is what the v2.1.1 pipeline did too and what the device verification requires. The binary embeds the WenQuanYi Micro Hei subset and draws the CJK blocks through it (0006); Latin keeps the 5x7 grid and every row goes through tr_text before it is drawn (0007); the sources are English and 0006's table supplies the Chinese, so a string with no entry reads English instead of breaking, including the achievement status line the account page wraps (0007, 0008); and the face-button pips follow the pad's own naming of x and y (0010). It does not carry a PGO profile (see build.pgo_note) and it was built without Vulkan, because the pinned toolchain image has no vulkan.h: the GPU 3D row is a no-op on this build and the setting says so in the language that is set. CI is the independent second-machine verifier; investigate any mismatch rather than overwriting this value."
+    "sha256": "f588bd2e51466f375a112b7f585ac29ac4508f202e32f9a0618c356b17338583",
+    "size_bytes": 5480208,
+    "note": "Recorded after the build described by this lock: the pinned commit (f5fa35e) plus the patch series (0001-0010) applied in order, SOURCE_DATE_EPOCH pinned to f5fa35e's committer time, -DDSPERATE_CHEEVOS_VERSION=3.0.0, no PGO, then $CROSS-strip --strip-unneeded, which is what the v2.1.1 pipeline did too and what the device verification requires. The binary embeds the WenQuanYi Micro Hei subset and draws the CJK blocks through it (0006); Latin keeps the 5x7 grid and every row goes through tr_text before it is drawn (0007); the sources are English and 0006's table supplies the Chinese, so a string with no entry reads English instead of breaking, including the achievement status line the account page wraps (0007, 0008); and the face-button pips follow the pad's own naming of x and y (0010). It does not carry a PGO profile (see build.pgo_note) and it was built without Vulkan, because the pinned toolchain image has no vulkan.h: the GPU 3D row is a no-op on this build and the setting says so in the language that is set. CI is the independent second-machine verifier; investigate any mismatch rather than overwriting this value."
   },
   "notice": {
     "file_name": "dsperate-notice",
@@ -144,8 +144,8 @@
   "localization": {
     "scanner": 1,
     "baseline_file": "standalone/localization.baseline.tsv",
-    "baseline_commit": "1b76c355109c9f7576363ccc023927b3137d3c6f",
-    "baseline_tag": "v3.0.0",
+    "baseline_commit": "f5fa35ea19f966543feae086798701f134d89619",
+    "baseline_tag": "main",
     "fingerprint": "809474ad14a4d6afe4637ee8e9447bfa4e50eec7e65aa2114a389134113d8f6c",
     "entries": 490,
     "check": " Against this baseline, the localized v3.0.0 tree draws 275 UI strings, of which 238 are upstream's own wording unchanged -- the sources are English, which is what makes that number what it is -- and 37 are not in the baseline: 22 are rows this pak added (the Turbo page and its rate, mode and per-button checkboxes; the UI LANGUAGE row) and each has a Chinese entry in tr_data.inc, 8 are the Chinese side of that table rather than UI text at all, and 7 are technical or test strings that read the same in any language (' HZ', 1X, 60 fps, < %s >, AUTO EMPTY, BIRTHDAY MONTH 11, the slot-row comment). Before the English baseline the same measurement was 248 strings of which 219 were not in the baseline, because 213 of them carried Han. The v2.1.1 baseline's fingerprint is b7c405a332fb44694da40a6d38e6b52db6024ca623ccc3dc68737d58bc2d47e0 over 531 entries. ",

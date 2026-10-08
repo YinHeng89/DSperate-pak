@@ -8,8 +8,8 @@ Everything here is measured from the build, not from memory.
 | | |
 | --- | --- |
 | Upstream | `https://github.com/beebono/DSperate.git` |
-| Tag | `v3.0.0` |
-| Commit | `1b76c355109c9f7576363ccc023927b3137d3c6f` |
+| Tag | `main` |
+| Commit | `f5fa35ea19f966543feae086798701f134d89619` |
 | Licence | GPL-3.0-or-later (`LICENSE`) |
 | Pak base | `cfb037e` (`v2.1.1`, merge of PR #6) &mdash; the released pak the Chinese series started from |
 | Build | the pinned commit above, with `standalone/patches/0001-0010` applied in order (each sha256-locked); see the table below |
@@ -373,8 +373,8 @@ CMake configuration (see `standalone/build-in-container.sh`):
 | `DSPERATE_PGO` | `off` | no profile fits this toolchain (see below); plain `-O2` |
 
 `SOURCE_DATE_EPOCH` is the pinned commit's committer timestamp
-(`1790447090`). `DSPERATE_LOCK_VERSION=v3.0.0` and
-`DSPERATE_LOCK_COMMIT=1b76c35` are exported from the lock so `--version` is
+(`1791414282`). `DSPERATE_LOCK_VERSION=v3.0.0` and
+`DSPERATE_LOCK_COMMIT=f5fa35e` are exported from the lock so `--version` is
 deterministic.
 
 ## Profile-guided optimisation
@@ -403,7 +403,7 @@ Entries are sorted, every timestamp is `SOURCE_DATE_EPOCH`, owner and group are
 gzip header has no name or timestamp. `make test-archives` builds both twice
 with every input's mtime and the umask changed in between and requires the
 same sha256. `make test-version` extracts the source archive, rebuilds from it
-with no git, and requires the locked binary and `DSperate v3.0.0 (1b76c35)`.
+with no git, and requires the locked binary and `DSperate v3.0.0 (f5fa35e)`.
 
 ## Linkage
 
@@ -425,10 +425,10 @@ highest glibc symbol version is `GLIBC_2.38`, the device's glibc.
 
 | | `bin/dsperate` | `bin/dsperate-notice` |
 | --- | --- | --- |
-| Source | the pinned commit `1b76c35` plus `standalone/patches/0001-0010` applied in order | `standalone/notice/notice.c` (this repository) |
+| Source | the pinned commit `f5fa35e` plus `standalone/patches/0001-0010` applied in order | `standalone/notice/notice.c` (this repository) |
 | Licence | GPL-3.0-or-later | MIT |
-| sha256 | `f38afcc4f0127876fd31507fe67ffa48ae3caa5613dcd65309e93cf7f1a0ed4f` | `c52bf4d447c5c855dd02dfb24d8eef962a5d3d079c15b3e4438ae2a5df34a160` |
-| Size | 5,472,016 bytes | 14,224 bytes |
+| sha256 | `f588bd2e51466f375a112b7f585ac29ac4508f202e32f9a0618c356b17338583` | `c52bf4d447c5c855dd02dfb24d8eef962a5d3d079c15b3e4438ae2a5df34a160` |
+| Size | 5,480,208 bytes | 14,224 bytes |
 | Reproduced | two clean builds agreed byte for byte, less the PGO profile (below) | `FORCE=1` builds agreed byte for byte |
 
 The emulator is stripped with `$CROSS-strip --strip-unneeded`, the same step
@@ -479,8 +479,8 @@ on the device separately; the SDL window-surface route remains the fallback.
 
 The v2.0.0 release checks below are retained as history. The v3.0.0 candidate
 this revision ships is host-verified only: the pinned commit plus the patch series builds to
-`f38afcc4…` (5,472,016 bytes) with `SOURCE_DATE_EPOCH` pinned and
-`DSPERATE_CHEEVOS_VERSION=3.0.0`, `--version` reports `v3.0.0 (1b76c35)` from
+`f588bd2e…` (5,480,208 bytes) with `SOURCE_DATE_EPOCH` pinned and
+`DSPERATE_CHEEVOS_VERSION=3.0.0`, `--version` reports `v3.0.0 (f5fa35e)` from
 the lock's own exported identity, the device verification passes (AArch64,
 stripped, no RPATH, `GLIBC_2.38` ceiling, every `NEEDED` library on the MLP1
 allowlist), seven real-executable archive CLI checks pass, and `make check`,
