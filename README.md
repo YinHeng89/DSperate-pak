@@ -53,7 +53,7 @@ adding Chinese for the strings that are new, one line each. The patches are re-a
 pinned upstream commit plus that series rather than from a pre-merged tree. It is
 host-verified only: two clean builds reproduce the binary `f588bd2e…`
 (5,480,208 bytes) from the pinned commit plus the patch series, `--version`
-reports `v3.0.0 (f5fa35e)` from both the lock and a rebuild, the device
+reports `v3.0.3 (f5fa35e)` from both the lock and a rebuild, the device
 verification passes, seven real-executable archive CLI checks pass, and the pak
 ZIP and source archive are byte-for-byte reproducible.
 It carries no PGO profile, because none trained against the v3.0.0 source fits
@@ -91,7 +91,7 @@ repository keeps them apart so each can move on its own:
   and account-adapter fixtures are merged in when they move; the `main` branch
   here tracks our own shipping state.
 - **Our maintained fork of the source — [YinHeng89/DSperate](https://github.com/YinHeng89/DSperate).**
-  This is where the patch series is developed and rebased: `main` is the f5fa35e
+  This is where the patch series is developed and rebased: `main` (v3.0.3) is the f5fa35e
   baseline and `zh-menu-v3.0.0` carries every local change (features, the
   Chinese menu and the generated CJK font). Each patch in `standalone/patches/`
   is a slice of that branch, so a rebase there regenerates the series here.

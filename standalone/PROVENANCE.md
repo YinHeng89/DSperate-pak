@@ -8,7 +8,7 @@ Everything here is measured from the build, not from memory.
 | | |
 | --- | --- |
 | Upstream | `https://github.com/beebono/DSperate.git` |
-| Tag | `main` |
+| Tag | `v3.0.3` |
 | Commit | `f5fa35ea19f966543feae086798701f134d89619` |
 | Licence | GPL-3.0-or-later (`LICENSE`) |
 | Pak base | `cfb037e` (`v2.1.1`, merge of PR #6) &mdash; the released pak the Chinese series started from |
@@ -373,7 +373,7 @@ CMake configuration (see `standalone/build-in-container.sh`):
 | `DSPERATE_PGO` | `off` | no profile fits this toolchain (see below); plain `-O2` |
 
 `SOURCE_DATE_EPOCH` is the pinned commit's committer timestamp
-(`1791414282`). `DSPERATE_LOCK_VERSION=v3.0.0` and
+(`1791414282`). `DSPERATE_LOCK_VERSION=v3.0.3` and
 `DSPERATE_LOCK_COMMIT=f5fa35e` are exported from the lock so `--version` is
 deterministic.
 
